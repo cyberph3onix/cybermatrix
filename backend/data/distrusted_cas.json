@@ -1,0 +1,19 @@
+{
+  "_about": "Curated distrust list. Match every certificate the server presents by cert_sha256 AND by spki_sha256 (the SPKI match also catches cross-signed copies of the same key). Source: Qualys advisory for CVE-2026-111943 (2026-10-23). Before shipping, cross-check fingerprints against Dennis Jackson's published list or CCADB, and fill spki_sha256 by fetching each cert from crt.sh by its SHA-256.",
+  "entries": [
+    {"incident": "emudhra-2026-10", "name": "EM EV TLS CA - G3B", "org": "eMudhra BV", "type": "tls_intermediate", "serial": "c7c41efe92d825f05eae841a4a82c1", "cert_sha256": "E7568FE6E12331F4FD7DE61DA4C7559D0F8EB192A218D4741A3BA75184333838", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM OV TLS CA - G3B", "org": "eMudhra BV", "type": "tls_intermediate", "serial": "6cada367fb1c100088120ea202d568", "cert_sha256": "98B896625C0C230ADEEC3EB2CF6AAD5001ECF9156A68644E82374CE5833BC25B", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM DV TLS CA - G3B", "org": "eMudhra BV", "type": "tls_intermediate", "serial": "a4aee678f23362b4c0e460b772f214", "cert_sha256": "42C4ACCD12C4F59597925E1A08A7A90102608543809308D50EC427E118BA1493", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM EV TLS CA - G3C", "org": "eMudhra Inc", "type": "tls_intermediate", "serial": "8009928a64107601af05fa2f19f109", "cert_sha256": "432EC25F0D28DE9006D97BF752F17BBB2CD41F669933FCB072D9A1148D0261F3", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM OV TLS CA - G3C", "org": "eMudhra Inc", "type": "tls_intermediate", "serial": "296926c227a3a1526392b19482a504", "cert_sha256": "CB6E15165AC802E9B3F993F16C25D41F4E81C21EBDE71AE1B012AC00BF9C7C3F", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM DV TLS CA - G3C", "org": "eMudhra Inc", "type": "tls_intermediate", "serial": "588b2e3c2bb8cda13e1a1209254321", "cert_sha256": "0164D7CEAE5BB909C272AF151FF44B1177AE9B47D9424B94F1D9558C30934D19", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM OV CS CA - G3B", "org": "eMudhra BV", "type": "codesign_intermediate", "serial": "7818933f8f85b4619a2b35fba83d0a", "cert_sha256": "9E39DE2881273ACC225A149C72BA3E0F51424963669AB633EE1DC7DF5DB067B4", "spki_sha256": null},
+    {"incident": "emudhra-2026-10", "name": "EM OV CS CA - G3C", "org": "eMudhra Inc", "type": "codesign_intermediate", "serial": "544b7f922c31ae220a4a922916f6e6", "cert_sha256": "4B2460A466F95FD40113BCDCCA2CEB29B3B093921DE45474DA7DF48874C630B1", "spki_sha256": null}
+  ],
+  "removed_roots": [
+    {"incident": "emudhra-2026-10", "name": "emSign ECC Root CA - G3", "note": "Removed from Mozilla NSS 2026-10-20; Chrome removal rolling out from 2026-10-27. Match by subject + SPKI. Severity high (removed root), not critical, unless a compromised intermediate is also present."}
+  ],
+  "watch": [
+    {"name": "emSign Root CA - G1", "note": "Under Chrome review as of late Oct 2026. Info-level note only; do not flag."}
+  ]
+}

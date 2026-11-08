@@ -1,0 +1,242 @@
+{
+  "schema_version": "1.0.0",
+  "report_id": "5f0c2a8e-6b1d-4c43-9a0e-2f3b7d9c1a11",
+  "salt": "abababababababababababababababababababababababababababababababab",
+  "created_at": "2026-11-08T02:00:00Z",
+  "subject_type": "url",
+  "subject": "https://sbi.co.in.kyc-verify-now.top/login?ref=sms",
+  "normalized_subject": "https://sbi.co.in.kyc-verify-now.top/login?ref=sms",
+  "classification": "confirmed_malicious",
+  "classification_reason": "R1b: URL.BRAND_IN_SUBDOMAIN + PAGE.CREDENTIAL_FORM + DOMAIN.YOUNG",
+  "score": 63,
+  "confidence": "high",
+  "coverage": {
+    "percent": 90,
+    "completed": [
+      "url.structure",
+      "intel.gsb",
+      "intel.urlhaus",
+      "intel.openphish",
+      "fetch.redirects",
+      "page.content",
+      "tls.chain",
+      "tls.revocation",
+      "tls.ct",
+      "domain.rdap"
+    ],
+    "unavailable": [
+      "intel.virustotal"
+    ],
+    "failed": [],
+    "skipped": []
+  },
+  "findings": [
+    {
+      "check_id": "URL.BRAND_IN_SUBDOMAIN",
+      "title": "Bank domain used as a subdomain of an unrelated site",
+      "category": "impersonation",
+      "severity": "high",
+      "strength": "technical",
+      "evidence": [
+        {
+          "kind": "url_component",
+          "description": "'sbi.co.in' appears as a subdomain; registrable domain is 'kyc-verify-now.top'",
+          "data": {
+            "registrable_domain": "kyc-verify-now.top",
+            "brand": "State Bank of India"
+          },
+          "source": "local:url_structure",
+          "observed_at": "2026-11-08T02:00:00Z"
+        }
+      ],
+      "impact": "Users reading left-to-right may believe this is SBI's official site.",
+      "recommendation": "Type SBI's address yourself instead of following links.",
+      "limitation": null,
+      "indicator_ref": null
+    },
+    {
+      "check_id": "PAGE.CREDENTIAL_FORM",
+      "title": "Login form on a non-SBI domain claiming to be SBI",
+      "category": "phishing",
+      "severity": "high",
+      "strength": "technical",
+      "evidence": [
+        {
+          "kind": "html_element",
+          "description": "Page title claims SBI Net Banking; page has password and OTP inputs",
+          "data": {
+            "fields": [
+              "username",
+              "password",
+              "otp"
+            ]
+          },
+          "source": "local:page_inspector",
+          "observed_at": "2026-11-08T02:00:00Z"
+        }
+      ],
+      "impact": "Credentials and OTPs entered here go to whoever runs this domain.",
+      "recommendation": "Do not enter any details. Report to cybercrime.gov.in or call 1930.",
+      "limitation": null,
+      "indicator_ref": null
+    },
+    {
+      "check_id": "DOMAIN.YOUNG",
+      "title": "Domain registered 3 days ago",
+      "category": "domain",
+      "severity": "medium",
+      "strength": "heuristic",
+      "evidence": [
+        {
+          "kind": "rdap",
+          "description": "Registration date 2026-11-05",
+          "data": {
+            "registered": "2026-11-05",
+            "age_days": 3
+          },
+          "source": "rdap",
+          "observed_at": "2026-11-08T02:00:00Z"
+        }
+      ],
+      "impact": "Phishing domains are usually very new.",
+      "recommendation": "Treat new domains claiming to be established brands with suspicion.",
+      "limitation": null,
+      "indicator_ref": null
+    },
+    {
+      "check_id": "TLS.CERT_VERY_NEW",
+      "title": "Certificate issued 2 days ago",
+      "category": "tls_trust",
+      "severity": "low",
+      "strength": "heuristic",
+      "evidence": [
+        {
+          "kind": "certificate_field",
+          "description": "notBefore 2026-11-06",
+          "data": {
+            "not_before": "2026-11-06T00:00:00Z"
+          },
+          "source": "local:tls_inspector",
+          "observed_at": "2026-11-08T02:00:00Z"
+        }
+      ],
+      "impact": "A valid certificate only proves the connection is encrypted, not that the site is legitimate.",
+      "recommendation": "Do not treat the padlock as proof of legitimacy.",
+      "limitation": null,
+      "indicator_ref": null
+    }
+  ],
+  "security_posture": [
+    {
+      "check_id": "POSTURE.NO_HSTS",
+      "title": "HSTS header missing",
+      "category": "security_posture",
+      "severity": "low",
+      "strength": "technical",
+      "evidence": [
+        {
+          "kind": "http_header",
+          "description": "No Strict-Transport-Security header",
+          "data": {},
+          "source": "local:headers",
+          "observed_at": "2026-11-08T02:00:00Z"
+        }
+      ],
+      "impact": "Allows SSL stripping on a first visit.",
+      "recommendation": "Add HSTS with max-age of at least one year.",
+      "limitation": null,
+      "indicator_ref": null
+    }
+  ],
+  "check_runs": [
+    {
+      "check_group": "intel.gsb",
+      "status": "completed",
+      "source": "google_safe_browsing",
+      "duration_ms": 212,
+      "weight": 10,
+      "detail": null
+    },
+    {
+      "check_group": "intel.virustotal",
+      "status": "unavailable",
+      "source": "virustotal",
+      "duration_ms": 0,
+      "weight": 10,
+      "detail": "Rate limit reached"
+    }
+  ],
+  "indicators": [
+    {
+      "type": "domain",
+      "value": "sbi.co.in.kyc-verify-now.top",
+      "normalized": "kyc-verify-now.top"
+    },
+    {
+      "type": "ip",
+      "value": "203.0.113.7",
+      "normalized": "203.0.113.7"
+    }
+  ],
+  "redirect_chain": [
+    {
+      "url": "https://bit.ly/3xYz",
+      "status_code": 301,
+      "resolved_ip": "67.199.248.10",
+      "cross_domain": true
+    },
+    {
+      "url": "https://sbi.co.in.kyc-verify-now.top/login?ref=sms",
+      "status_code": 200,
+      "resolved_ip": "203.0.113.7",
+      "cross_domain": true
+    }
+  ],
+  "certificate": {
+    "subject_cn": "*.kyc-verify-now.top",
+    "san": [
+      "*.kyc-verify-now.top",
+      "kyc-verify-now.top"
+    ],
+    "issuer": "R11 (Let's Encrypt)",
+    "chain_issuers": [
+      "R11",
+      "ISRG Root X1"
+    ],
+    "not_before": "2026-11-06T00:00:00Z",
+    "not_after": "2027-02-04T00:00:00Z",
+    "days_remaining": 88,
+    "key_type": "EC",
+    "key_bits": 256,
+    "signature_algorithm": "ecdsa-with-SHA384",
+    "sha256_fingerprint": "3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+    "ocsp_status": "good",
+    "ct_sct_count": 2,
+    "ct_logged_in_crtsh": true,
+    "chain_valid": true,
+    "tls_version": "TLSv1.3"
+  },
+  "ai": {
+    "model": "claude-haiku-5-5",
+    "summary": "This link pretends to be SBI by putting 'sbi.co.in' at the start of a different website's address. The page asks for your password and OTP, and the domain was created three days ago. Its HTTPS certificate is valid, but that only means the connection is encrypted, not that the site is SBI.",
+    "language_signals": [],
+    "verified_evidence_refs": [
+      "URL.BRAND_IN_SUBDOMAIN",
+      "PAGE.CREDENTIAL_FORM",
+      "DOMAIN.YOUNG"
+    ],
+    "injection_attempt_detected": false,
+    "disclaimer": "AI-generated explanation of the findings above. The classification is computed by deterministic rules, not by the AI."
+  },
+  "recommended_actions": [
+    "Do not open the link or enter any information.",
+    "If you already entered details, call your bank and 1930 immediately.",
+    "Report this link to the community registry."
+  ],
+  "limitations": [
+    "VirusTotal was unavailable (rate limit).",
+    "Absence of threat-intel listings does not prove safety.",
+    "We cannot detect weaknesses in a Certificate Authority's internal key generation from a URL."
+  ],
+  "related_report_ids": []
+}
