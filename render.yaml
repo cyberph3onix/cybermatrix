@@ -1,0 +1,60 @@
+# Render Blueprint: free Postgres + backend (FastAPI) + frontend (Next.js), all from this repo.
+# Dashboard → New → Blueprint → pick this repo. Fill the `sync: false` values when asked (never commit them).
+# If Render renames a service because the name is taken, update PUBLIC/CORS URLs below to match.
+databases:
+  - name: cybermatrix-db
+    plan: free
+    databaseName: cybermatrix
+    user: cybermatrix
+
+services:
+  - type: web
+    name: cybermatrix-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cybermatrix-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://cybermatrix-web.onrender.com
+      - key: TRUST_FORWARDED_FOR      # Render's proxy appends the client IP last
+        value: "1"
+      - key: REGISTER_MAX_PER_HOUR    # caps relayer gas spend from the public site
+        value: "10"
+      - key: MAX_CONCURRENT_ASSESSMENTS
+        value: "3"
+      - key: REGISTRY_ADDRESS
+        value: "0x5De4Cd6F651A4D80ddA16fc70431dd669621BeeA"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GSB_API_KEY
+        sync: false
+      - key: VT_API_KEY
+        sync: false
+      - key: URLHAUS_AUTH_KEY
+        sync: false
+      - key: CERTSPOTTER_API_KEY
+        sync: false
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: RELAYER_PRIVATE_KEY      # reporter role only; never the deployer key
+        sync: false
+
+  - type: web
+    name: cybermatrix-web
+    runtime: docker
+    plan: free
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "3000"
+      - key: NEXT_PUBLIC_API_URL      # inlined at build time (Docker build arg)
+        value: https://cybermatrix-api.onrender.com

@@ -161,6 +161,8 @@ class IntelCacheRow(Base):
 class Database:
     def __init__(self, url: str | None = None, *, engine: AsyncEngine | None = None) -> None:
         url = url or os.environ.get("DATABASE_URL")
+        if url and url.startswith(("postgres://", "postgresql://")):  # hosted Postgres (Render, Neon) URLs
+            url = "postgresql+asyncpg://" + url.split("://", 1)[1]
         if engine is None:
             if not url:
                 raise RuntimeError("DATABASE_URL is not set")
