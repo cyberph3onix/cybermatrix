@@ -6,6 +6,17 @@ import { feedUrls, getClusters, getImpersonationTrends } from "@/lib/api";
 import { CLASS_STYLE } from "@/lib/classes";
 import type { Cluster, ImpersonationTrend } from "@/lib/types";
 
+const TECHNIQUE_LABEL: Record<string, string> = {
+  lookalike_domain: "lookalike domain",
+  brand_in_subdomain: "brand name in the address",
+  fake_login_page: "fake login page",
+  spoofed_sender: "spoofed email sender",
+  credential_request: "asks for codes or KYC",
+  payment_request: "asks for payment",
+  remote_access: "remote-access app",
+  reward_lure: "prize, refund or returns",
+};
+
 const TYPE_LABEL: Record<string, string> = {
   ip: "IP address",
   domain: "Domain",
@@ -81,6 +92,11 @@ export default function ClustersPage() {
                   {t.reports} reports ({t.links} links, {t.messages} messages)
                 </span>
                 <span className="text-xs text-muted">last {day(t.last_seen)}</span>
+                {t.techniques.length > 0 && (
+                  <span className="w-full text-xs text-muted">
+                    How: {t.techniques.map((x) => `${TECHNIQUE_LABEL[x.technique] ?? x.technique} (${x.reports})`).join(", ")}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -123,6 +139,20 @@ export default function ClustersPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {c.edges.length > 0 && (
+                    <details className="mt-4 text-sm">
+                      <summary className="cursor-pointer font-semibold">Why these reports are linked ({c.edges.length})</summary>
+                      <ul className="mt-1 space-y-1">
+                        {c.edges.map((e) => (
+                          <li key={`${e.from_report}-${e.to_report}-${e.type}-${e.value}`} className="break-all">
+                            <span className="font-mono text-xs">{e.from_report.slice(0, 8)}</span> ↔{" "}
+                            <span className="font-mono text-xs">{e.to_report.slice(0, 8)}</span>: {e.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
 
                   {c.member_domains.length > 0 && (
                     <>

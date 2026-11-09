@@ -713,6 +713,11 @@ export interface components {
             /** Cluster Id */
             cluster_id: string;
             /**
+             * Edges
+             * @description Why each report is in the cluster (deterministic)
+             */
+            edges: components["schemas"]["ClusterEdge"][];
+            /**
              * First Seen
              * Format: date-time
              */
@@ -738,6 +743,28 @@ export interface components {
             /** Summary Model */
             summary_model: string | null;
             top_classification: components["schemas"]["RiskClass"];
+        };
+        /**
+         * ClusterEdge
+         * @description One deterministic link between two member reports: the indicator they both contain.
+         */
+        ClusterEdge: {
+            /** From Report */
+            from_report: string;
+            /**
+             * Reason
+             * @description e.g. "both contain UPI ID scammer@oksbi"
+             */
+            reason: string;
+            /** To Report */
+            to_report: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "url" | "domain" | "ip" | "asn" | "nameserver" | "cert_sha256" | "email" | "phone" | "upi_id" | "crypto_address" | "message_family" | "brand_claimed";
+            /** Value */
+            value: string;
         };
         /** ClusterIndicator */
         ClusterIndicator: {
@@ -919,6 +946,11 @@ export interface components {
              * @description Stored reports at suspicious or worse that impersonate this brand
              */
             reports: number;
+            /**
+             * Techniques
+             * @description How these reports impersonate the brand, most common first
+             */
+            techniques: components["schemas"]["TrendTechnique"][];
         };
         /** Indicator */
         Indicator: {
@@ -1243,6 +1275,16 @@ export interface components {
          * @enum {string}
          */
         SubjectType: "url" | "domain" | "message" | "email" | "qr";
+        /** TrendTechnique */
+        TrendTechnique: {
+            /** Reports */
+            reports: number;
+            /**
+             * Technique
+             * @description lookalike_domain | brand_in_subdomain | fake_login_page | spoofed_sender | credential_request | payment_request | remote_access | reward_lure
+             */
+            technique: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */

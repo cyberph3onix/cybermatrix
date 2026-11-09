@@ -73,6 +73,14 @@ async def assess_message(text: str, *, deps: Deps | None = None, llm: LlmClient 
             ref = msg.parse_url(u).url_without_userinfo() if u else u
             findings += [f.model_copy(update={"indicator_ref": ref}) for f in sub.findings]
             url_pcts.append(sub.coverage.percent)
+            # the link's own indicators (redirect hops incl. the final destination, IPs, nameservers, certificate)
+            # so campaigns using different links to the same infrastructure correlate. A hop's domain is not a
+            # `url` indicator, so correlation/checks.py still never treats it as something the user submitted.
+            have = {(i.type, i.normalized) for i in indicators}
+            for i in sub.indicators:
+                if i.type != "url" and (i.type, i.normalized) not in have:
+                    have.add((i.type, i.normalized))
+                    indicators.append(i)
             limitations += [f"{u[:60]}: {x}" for x in sub.limitations if x not in FIXED_LIMITATIONS and "AI explanation" not in x]
         if len(ex.urls) > MAX_URLS:
             limitations.append(f"Only the first {MAX_URLS} of {len(ex.urls)} links were checked.")

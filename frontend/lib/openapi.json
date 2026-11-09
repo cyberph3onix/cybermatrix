@@ -575,6 +575,14 @@
             "title": "Cluster Id",
             "type": "string"
           },
+          "edges": {
+            "description": "Why each report is in the cluster (deterministic)",
+            "items": {
+              "$ref": "#/components/schemas/ClusterEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
           "first_seen": {
             "format": "date-time",
             "title": "First Seen",
@@ -646,10 +654,61 @@
           "top_classification",
           "shared_indicators",
           "member_domains",
+          "edges",
           "summary",
           "summary_model"
         ],
         "title": "Cluster",
+        "type": "object"
+      },
+      "ClusterEdge": {
+        "additionalProperties": false,
+        "description": "One deterministic link between two member reports: the indicator they both contain.",
+        "properties": {
+          "from_report": {
+            "title": "From Report",
+            "type": "string"
+          },
+          "reason": {
+            "description": "e.g. \"both contain UPI ID scammer@oksbi\"",
+            "title": "Reason",
+            "type": "string"
+          },
+          "to_report": {
+            "title": "To Report",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "url",
+              "domain",
+              "ip",
+              "asn",
+              "nameserver",
+              "cert_sha256",
+              "email",
+              "phone",
+              "upi_id",
+              "crypto_address",
+              "message_family",
+              "brand_claimed"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_report",
+          "to_report",
+          "type",
+          "value",
+          "reason"
+        ],
+        "title": "ClusterEdge",
         "type": "object"
       },
       "ClusterIndicator": {
@@ -1046,6 +1105,14 @@
             "description": "Stored reports at suspicious or worse that impersonate this brand",
             "title": "Reports",
             "type": "integer"
+          },
+          "techniques": {
+            "description": "How these reports impersonate the brand, most common first",
+            "items": {
+              "$ref": "#/components/schemas/TrendTechnique"
+            },
+            "title": "Techniques",
+            "type": "array"
           }
         },
         "required": [
@@ -1056,7 +1123,8 @@
           "links",
           "first_seen",
           "last_seen",
-          "report_ids"
+          "report_ids",
+          "techniques"
         ],
         "title": "ImpersonationTrend",
         "type": "object"
@@ -1864,6 +1932,26 @@
         ],
         "title": "SubjectType",
         "type": "string"
+      },
+      "TrendTechnique": {
+        "additionalProperties": false,
+        "properties": {
+          "reports": {
+            "title": "Reports",
+            "type": "integer"
+          },
+          "technique": {
+            "description": "lookalike_domain | brand_in_subdomain | fake_login_page | spoofed_sender | credential_request | payment_request | remote_access | reward_lure",
+            "title": "Technique",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technique",
+          "reports"
+        ],
+        "title": "TrendTechnique",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {

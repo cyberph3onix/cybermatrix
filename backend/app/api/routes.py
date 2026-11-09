@@ -24,7 +24,7 @@ from app.ai.redact import redact
 from app.api.state import AppState
 from app.brands import get_index
 from app.correlation.checks import apply_correlation
-from app.correlation.clusters import build_clusters, impersonation_trends
+from app.correlation.clusters import build_clusters, impersonation_trends, techniques_of
 from app.db import DisputeReasonRow, OrgRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
 from app.detect import detect_subject
 from app.engine.cert_verdict import certificate_verdict
@@ -509,9 +509,12 @@ async def trends(db: Db) -> list[ImpersonationTrend]:
     from app.db import ReportRow
     rows = await store.indicator_rows(db)
     ids = {r[0] for r in rows if r[1] == "brand_claimed"}
-    kinds = dict((await db.execute(select(ReportRow.report_id, ReportRow.subject_type)
-                                   .where(ReportRow.report_id.in_(ids)))).all()) if ids else {}
-    return impersonation_trends(rows, kinds)
+    found = (await db.execute(select(ReportRow.report_id, ReportRow.subject_type, ReportRow.canonical)
+                              .where(ReportRow.report_id.in_(ids)))).all() if ids else []
+    kinds = {rid: kind for rid, kind, _ in found}
+    techniques = {rid: techniques_of([f.check_id for f in AssessmentReport.model_validate_json(c).findings])
+                  for rid, _, c in found}
+    return impersonation_trends(rows, kinds, techniques=techniques)
 
 
 # ---------- CT watchlist ----------

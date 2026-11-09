@@ -187,6 +187,15 @@ server. A prior report's `domain` indicator counts only if it is the host of one
 redirects to a victim's homepage would make the victim `confirmed_malicious`. Evidence lists matching report IDs and
 never the matching email, phone, UPI or crypto value.
 
+**Clusters and trends (`correlation/clusters.py`).** `/clusters` groups suspicious-or-worse reports that share a
+specific indicator (domain, including every redirect hop and the final destination; certificate; email; phone; UPI
+ID; crypto address; message wording family). A message report carries its links' own indicators too, so three
+messages with different links that land on the same destination (or pay the same UPI ID) form one cluster
+(`tests/test_audit_correlation.py`). Each cluster lists `edges`: report pairs with the indicator they share, so every
+link has a deterministic reason; the optional AI summary only describes. `/trends/impersonation` counts reports per
+claimed brand and per technique (lookalike domain, brand in the address, fake login page, spoofed sender, credential
+request, payment request, remote access, prize/refund/returns), read from each report's check IDs.
+
 `PAGE.LLM_CLAIMED_BRAND` (`checks/page_llm.py`, group `page.llm`, weight 0) fires only when the model extracted a
 brand that is not in brands.json, the page asks for credentials or payment, the host is not allowlisted and no
 word of the brand appears in the registrable domain. The model extracts; code decides.

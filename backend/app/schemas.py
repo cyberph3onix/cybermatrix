@@ -459,6 +459,15 @@ class ClusterIndicator(Strict):
     report_count: int = Field(description="How many member reports contain this indicator")
 
 
+class ClusterEdge(Strict):
+    """One deterministic link between two member reports: the indicator they both contain."""
+    from_report: str
+    to_report: str
+    type: IndicatorType
+    value: str
+    reason: str = Field(description='e.g. "both contain UPI ID scammer@oksbi"')
+
+
 class Cluster(Strict):
     cluster_id: str
     label: str
@@ -468,8 +477,15 @@ class Cluster(Strict):
     top_classification: RiskClass
     shared_indicators: list[ClusterIndicator]
     member_domains: list[str]
+    edges: list[ClusterEdge] = Field(default_factory=list, description="Why each report is in the cluster (deterministic)")
     summary: str | None = Field(default=None, description="Two-sentence AI-written description; null when no LLM is configured")
     summary_model: str | None = None
+
+
+class TrendTechnique(Strict):
+    technique: str = Field(description="lookalike_domain | brand_in_subdomain | fake_login_page | spoofed_sender | "
+                                       "credential_request | payment_request | remote_access | reward_lure")
+    reports: int
 
 
 class ImpersonationTrend(Strict):
@@ -481,6 +497,8 @@ class ImpersonationTrend(Strict):
     first_seen: datetime
     last_seen: datetime
     report_ids: list[str] = Field(description="Most recent first, at most 10")
+    techniques: list[TrendTechnique] = Field(default_factory=list,
+                                             description="How these reports impersonate the brand, most common first")
 
 
 # ---------- API responses ----------
