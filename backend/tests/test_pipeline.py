@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from app import pipeline
-from app.checks import tls_ct
+from app.checks import lookalike, tls_ct
 from app.checks.tls_chain import TlsScan, cert_sha256, spki_sha256
 from app.engine import coverage as cov
 from app.fetch.api_client import ApiClient
@@ -162,6 +162,42 @@ async def test_hanging_check_becomes_failed_run():
     assert runs["url.lookalike"].status == "failed" and "RuntimeError" in runs["url.lookalike"].detail
     assert any("url.structure failed: timed out" in x for x in rep.limitations)
     assert_contract(rep)
+
+
+async def test_overall_budget_cuts_slow_checks(monkeypatch):
+    """Per-check timeouts can stack up on a starved CPU; the whole check phase still ends at ASSESS_BUDGET_S."""
+    async def slow(ctx):
+        await asyncio.sleep(10)
+
+    monkeypatch.setattr(pipeline, "ASSESS_BUDGET_S", 0.05)
+    specs = [CheckSpec("url.structure", slow, 5, "t"), CheckSpec("url.lookalike", lookalike.run, 5, lookalike.SOURCE)]
+    rep = await assess_url("https://example.com/", now=NOW, deps=Deps(checks=specs))
+    runs = {r.check_group: r for r in rep.check_runs}
+    assert runs["url.structure"].status == "failed" and "time budget" in runs["url.structure"].detail
+    assert runs["url.lookalike"].status == "completed"
+    assert any("url.structure failed: assessment time budget" in x for x in rep.limitations)
+    assert_contract(rep)
+
+
+def test_permutation_index_built_once_under_concurrency(monkeypatch):
+    import threading
+    calls = []
+
+    def fake_load():
+        calls.append(1)
+        threading.Event().wait(0.05)  # long enough for the other threads to race
+        return {}
+    monkeypatch.setattr(lookalike, "_load_or_build", fake_load)
+    lookalike._reset_index()
+    try:
+        threads = [threading.Thread(target=lookalike.permutation_index) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert len(calls) == 1
+    finally:
+        lookalike._reset_index()
 
 
 async def test_missing_scheme_and_unparseable():

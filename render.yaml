@@ -1,6 +1,8 @@
 # Render Blueprint: free Postgres + backend (FastAPI) + frontend (Next.js), all from this repo.
 # Dashboard → New → Blueprint → pick this repo. Fill the `sync: false` values when asked (never commit them).
 # If Render renames a service because the name is taken, update PUBLIC/CORS URLs below to match.
+# Free plan sleeps after 15 min idle (first request then takes ~1 min). To keep the API awake for free, point an
+# external pinger (cron-job.org / UptimeRobot) at https://cybermatrix-api-ik33.onrender.com/health every 10 min.
 databases:
   - name: cybermatrix-db
     plan: free

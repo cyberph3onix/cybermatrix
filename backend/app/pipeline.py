@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -26,6 +28,11 @@ from app.schemas import (
 from app.urlutil import URLParseError, parse_url, registrable_domain
 
 CheckFn = Callable[[AssessmentContext], Awaitable[CheckResult]]
+
+log = logging.getLogger(__name__)
+# Hard ceiling for all checks of one URL. Per-check timeouts are wall-clock, but on a starved CPU (free hosting)
+# they can stack up; the browser gives up at 90 s, and the AI explanation and storage still need time after this.
+ASSESS_BUDGET_S = float(os.environ.get("ASSESS_BUDGET_S", "55"))
 
 
 @dataclass(frozen=True)
@@ -134,14 +141,26 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
     specs = list(deps.checks)
     if deps.llm is not None and all(sp.group != page_llm.GROUP for sp in specs):
         specs.append(CheckSpec(page_llm.GROUP, page_llm.run, 45, page_llm.SOURCE))  # weight 0; waits for the fetch
+    t0 = time.monotonic()
+    tasks = [asyncio.create_task(run_check(s, ctx)) for s in specs]
     try:
-        results = await asyncio.gather(*(run_check(s, ctx) for s in specs))
+        done, _ = await asyncio.wait(tasks, timeout=ASSESS_BUDGET_S) if tasks else (set(), set())
+        results: list[CheckResult] = []
+        for s, t in zip(specs, tasks, strict=True):
+            if t in done:
+                results.append(t.result())
+            else:  # still running at the deadline: say so, so the gap shows up in limitations
+                results.append((make_run(s.group, CheckStatus.FAILED, s.source, t0,
+                                         f"assessment time budget ({ASSESS_BUDGET_S:g}s) exceeded"), []))
     finally:
-        for t in (ctx._fetch_task, ctx._tls_task):
+        for t in (*tasks, ctx._fetch_task, ctx._tls_task):
             if t is not None and not t.done():
                 t.cancel()
 
     runs: list[CheckRun] = [r for r, _ in results]
+    slowest = sorted(runs, key=lambda r: r.duration_ms, reverse=True)[:3]
+    log.info("assessment checks took %d ms; slowest: %s", int((time.monotonic() - t0) * 1000),
+             ", ".join(f"{r.check_group}={r.duration_ms}ms" for r in slowest))
     findings: list[Finding] = [f for _, fs in results for f in fs]
     ran = {r.check_group for r in runs}
     for group in cov.WEIGHTS:  # every coverage group gets a run, so gaps always show up in limitations

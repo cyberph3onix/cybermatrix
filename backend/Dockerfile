@@ -10,6 +10,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
 COPY data ./data
+# Bake the dnstwist lookalike index (~300k permutations, ~10 s of CPU here, minutes on a 0.1-CPU host) into the
+# image so a cold start only loads data/.cache/permutations-*.json.gz instead of rebuilding it.
+RUN /app/.venv/bin/python -c "from app.checks.lookalike import permutation_index; print(len(permutation_index()), 'lookalike permutations cached')"
 # data/ is written at runtime: the OpenPhish feed and the dnstwist permutation cache.
 RUN chown -R app:app /app/data
 USER app

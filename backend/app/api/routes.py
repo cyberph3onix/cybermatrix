@@ -87,6 +87,8 @@ from app.schemas import (
 from app.urlutil import URLParseError, parse_url
 
 log = logging.getLogger(__name__)
+# The explanation is optional (the verdict is rule-based); cap it so the whole request beats the browser's 90 s.
+EXPLAIN_BUDGET_S = 20
 router = APIRouter()
 
 REPORT_ID = re.compile(r"^[0-9a-fA-F-]{36}$")
@@ -152,8 +154,8 @@ async def _explain(st: AppState, report: AssessmentReport, untrusted: str | None
     if llm is None:
         return report
     try:
-        ai = await explain(llm, report, untrusted)
-    except LlmUnavailable:
+        ai = await asyncio.wait_for(explain(llm, report, untrusted), EXPLAIN_BUDGET_S)
+    except (LlmUnavailable, TimeoutError):
         return report
     return report.model_copy(update={"ai": ai, "limitations": [x for x in report.limitations if "AI explanation not" not in x]})
 

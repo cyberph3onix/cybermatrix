@@ -10,6 +10,7 @@ import gzip
 import hashlib
 import json
 import re
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -52,9 +53,29 @@ def _cache_key() -> str:
     return h.hexdigest()[:16]
 
 
-@cache
+_BUILD_LOCK = threading.Lock()
+_INDEX: dict[str, _Hit] | None = None
+
+
 def permutation_index() -> dict[str, _Hit]:
-    """registrable-domain permutation → hit. Built once at startup (cached on disk: dnstwist takes ~5 s)."""
+    """registrable-domain permutation → hit. Built once (dnstwist takes ~10 s of CPU, far longer on a small
+    instance), cached on disk, and baked into the Docker image at build time. The lock makes threads that race on
+    the first call wait for one build instead of each starting their own."""
+    global _INDEX
+    if _INDEX is None:
+        with _BUILD_LOCK:
+            if _INDEX is None:
+                _INDEX = _load_or_build()
+    return _INDEX
+
+
+def _reset_index() -> None:
+    """Tests only: forget the in-memory index."""
+    global _INDEX
+    _INDEX = None
+
+
+def _load_or_build() -> dict[str, _Hit]:
     path = CACHE_DIR / f"permutations-{_cache_key()}.json.gz"
     try:
         raw = json.loads(gzip.decompress(path.read_bytes()))
