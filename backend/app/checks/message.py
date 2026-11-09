@@ -136,6 +136,10 @@ def _is_domain(s: str) -> bool:
     return bool(name and suffix and any(c.isalpha() for c in name))
 
 
+_RECIPIENT_HDR = re.compile(r"^(?:to|cc|bcc|delivered-to|x-original-to|envelope-to|x-envelope-to|resent-to)[ \t]*:(.*(?:\n[ \t]+.*)*)",
+                            re.I | re.M)
+
+
 def extract(text: str) -> Extracted:
     urls = _uniq(u.rstrip(TRAIL) for u in _URL.findall(text))
     covered = {parse_host(u) for u in urls}
@@ -144,9 +148,14 @@ def extract(text: str) -> Extracted:
             urls.append(m)
             covered.add(m)
     email_spans = _AT.findall(text)
+    # The recipient's own address in pasted headers (To/Cc/Delivered-To...) is the victim's, not an indicator: it
+    # would otherwise be stored and shown to other users on /clusters.
+    recipients = {a.lower() for line in _RECIPIENT_HDR.findall(text) for a in _AT.findall(line)}
     emails, upi = [], []
     for m in email_spans:
         m = m.rstrip(TRAIL)
+        if m.lower() in recipients:
+            continue
         (emails if "." in m.split("@", 1)[1] else upi).append(m)
     return Extracted(urls=urls, emails=_uniq(emails), upi_ids=_uniq(upi),
                      phones=_uniq(m.strip() for m in _PHONE.findall(text) if re.sub(r"\D", "", m)),

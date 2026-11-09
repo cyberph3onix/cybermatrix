@@ -161,3 +161,12 @@ def test_salt_prevents_recovering_the_url_from_the_onchain_hash():
             if report_hash(rep.model_copy(update={"subject": u, "salt": s})) == target]
     assert hits == []
     assert report_hash(rep) == target and len(rep.salt) == 64  # the real salt (which is off-chain) does reproduce it
+
+
+def test_recipient_address_in_pasted_headers_is_never_an_indicator():
+    from app.checks.message import extract
+    email = ("From: HDFC Bank <alerts@hdfcbank.com>\nReply-To: support@hdfc-kyc-help.top\nTo: Victim <me@victim.in>,\n"
+             "  other@victim.in\nDelivered-To: me@victim.in\nSubject: hi\n\nWrite to me@victim.in or support@hdfc-kyc-help.top")
+    ex = extract(email)
+    assert "me@victim.in" not in ex.emails and "other@victim.in" not in ex.emails
+    assert {"alerts@hdfcbank.com", "support@hdfc-kyc-help.top"} <= set(ex.emails)
