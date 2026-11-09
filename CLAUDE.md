@@ -110,12 +110,19 @@ docker compose up --build
 cd backend && uv run pytest -q
 cd contracts && forge test -vv && forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 python verify/verify.py --report report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS
+REPORT_ID=1 STATUS=validated forge script script/SetStatus.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast  # in contracts/
+uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
 ```
 
 ## Env vars
 
 `DATABASE_URL, ANTHROPIC_API_KEY, GSB_API_KEY, VT_API_KEY, URLHAUS_AUTH_KEY, SEPOLIA_RPC_URL,
-RELAYER_PRIVATE_KEY, REGISTRY_ADDRESS, ETHERSCAN_API_KEY, CERTSPOTTER_API_KEY (optional)`. Never commit `.env`. Never log keys or full messages.
+RELAYER_PRIVATE_KEY, DEPLOYER_PRIVATE_KEY, REGISTRY_ADDRESS, ETHERSCAN_API_KEY, CERTSPOTTER_API_KEY (optional)`.
+Never commit `.env`. Never log keys or full messages.
+
+Roles: `DEPLOYER_PRIVATE_KEY` deploys the registry and is its owner + validator (used by `script/Deploy.s.sol`
+and `script/SetStatus.s.sol`). `RELAYER_PRIVATE_KEY` is used only by the backend to call `submitReport`; it has
+no on-chain role. After changing the contract, run `contracts/script/export_abi.sh` to refresh the backend ABI.
 
 ## Library and source choices (see docs/DECISIONS.md for why)
 

@@ -1,0 +1,502 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addValidator",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disputeReport",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reasonHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getReport",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ThreatRegistry.Report",
+        "components": [
+          {
+            "name": "reportHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "parentHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "reporter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "createdAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ThreatRegistry.Status"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "idOfHash",
+    "inputs": [
+      {
+        "name": "reportHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isValidator",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "removeValidator",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "reportCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setStatus",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "s",
+        "type": "uint8",
+        "internalType": "enum ThreatRegistry.Status"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "submitReport",
+    "inputs": [
+      {
+        "name": "reportHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "parentHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReportDisputed",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "disputer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "reasonHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReportSubmitted",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reportHash",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "parentHash",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "reporter",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReportSuperseded",
+    "inputs": [
+      {
+        "name": "parentId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "childId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StatusChanged",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "from",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ThreatRegistry.Status"
+      },
+      {
+        "name": "to",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum ThreatRegistry.Status"
+      },
+      {
+        "name": "by",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValidatorAdded",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValidatorRemoved",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyValidator",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DuplicateHash",
+    "inputs": [
+      {
+        "name": "reportHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidStatus",
+    "inputs": [
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum ThreatRegistry.Status"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidTransition",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "uint8",
+        "internalType": "enum ThreatRegistry.Status"
+      },
+      {
+        "name": "to",
+        "type": "uint8",
+        "internalType": "enum ThreatRegistry.Status"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotAValidator",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotParentOwner",
+    "inputs": [
+      {
+        "name": "parentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotValidator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ParentAlreadySuperseded",
+    "inputs": [
+      {
+        "name": "parentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ParentNotFound",
+    "inputs": [
+      {
+        "name": "parentHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ParentRejected",
+    "inputs": [
+      {
+        "name": "parentId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReportNotFound",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroHash",
+    "inputs": []
+  }
+]
