@@ -165,3 +165,20 @@ async def test_run_failed_fetch():
     ctx.fetcher = fake_fetcher(fr)
     run, findings = await headers.run(ctx)
     assert (run.status, findings) == ("failed", [])
+
+
+def test_end_of_life_software_from_banners():
+    from datetime import date
+    hits = headers.outdated_software({"server": "Apache/2.2.15 (CentOS) OpenSSL/1.0.2k", "x-powered-by": "PHP/5.6.40"},
+                                     date(2026, 11, 9))
+    assert {(h[1], h[2]) for h in hits} == {("Apache HTTP Server", "2.2"), ("OpenSSL", "1.0.2"), ("PHP", "5.6")}
+    # supported lines (or a patch level inside one) are not flagged; unknown products are ignored
+    assert headers.outdated_software({"server": "nginx/1.30.2", "x-powered-by": "PHP/8.4.1"}, date(2026, 11, 9)) == []
+    assert headers.outdated_software({"server": "Apache/2.4.6 (CentOS)"}, date(2026, 11, 9)) == []
+    assert headers.outdated_software({"server": "cloudflare"}, date(2026, 11, 9)) == []
+
+
+def test_outdated_software_is_posture_only():
+    fs = headers.analyze({"server": "nginx/1.16.1"}, "https://example.com/", b"", "text/html", "TLSv1.3", NOW)
+    [f] = [f for f in fs if f.check_id == "POSTURE.OUTDATED_SOFTWARE"]
+    assert f.category == "security_posture" and "backport" in f.limitation and f.evidence[0].data["eol"]

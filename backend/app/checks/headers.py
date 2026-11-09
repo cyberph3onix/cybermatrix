@@ -10,11 +10,15 @@ POSTURE.EXPOSED_FILE makes two extra GETs (/.git/HEAD, /.env) through safe_fetch
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
+from datetime import date
+from functools import cache
 
 from selectolax.lexbor import LexborHTMLParser
 
+from app.brands import DATA_DIR
 from app.checks.base import AssessmentContext, CheckResult, evidence, make_finding, make_run
 from app.checks.tls_chain import _target
 from app.fetch.safe_fetch import safe_fetch
@@ -25,6 +29,39 @@ GROUP = "posture.headers"
 SOURCE = "local:header_inspector"
 LIMITATION = "Security-posture finding: reported for information and not used in the risk classification."
 _VERSIONED = re.compile(r"\d+\.\d+")
+
+# product slug in data/eol_software.json -> banner pattern. Version cycles are major.minor, except OpenSSL 1.x
+# (1.0.2, 1.1.1), whose cycles include the patch number.
+_BANNERS = {
+    "nginx": re.compile(r"\bnginx/(\d+\.\d+)", re.I),
+    "apache-http-server": re.compile(r"\bApache/(\d+\.\d+)", re.I),
+    "php": re.compile(r"\bPHP/(\d+\.\d+)", re.I),
+    "openssl": re.compile(r"\bOpenSSL/(1\.\d+\.\d+|\d+\.\d+)", re.I),
+    "tomcat": re.compile(r"\bApache Tomcat/(\d+\.\d+)", re.I),
+}
+
+
+@cache
+def eol_table() -> dict:
+    return json.loads((DATA_DIR / "eol_software.json").read_text())
+
+
+def outdated_software(headers: dict[str, str], today: date) -> list[tuple[str, str, str, str, str]]:
+    """[(header, product name, version cycle, eol date, latest)] for banner versions whose cycle is end-of-life."""
+    products = eol_table()["products"]
+    out, seen = [], set()
+    for header in ("server", "x-powered-by"):
+        value = headers.get(header) or ""
+        for slug, rx in _BANNERS.items():
+            m = rx.search(value)
+            if not m or slug in seen:
+                continue
+            cycle = next((c for c in products[slug]["cycles"] if c["cycle"] == m.group(1)), None)
+            eol = cycle and cycle["eol"]
+            if isinstance(eol, str) and date.fromisoformat(eol) < today:
+                seen.add(slug)
+                out.append((header, products[slug]["name"], m.group(1), eol, cycle.get("latest") or "?"))
+    return out
 _OLD_TLS = ("SSLv2", "SSLv3", "TLSv1.0", "TLSv1.1")
 _SUBRESOURCES = (("script", "src"), ("link[rel~=stylesheet]", "href"), ("iframe", "src"), ("img", "src"),
                  ("audio", "src"), ("video", "src"), ("source", "src"), ("embed", "src"), ("object", "data"))
@@ -70,9 +107,9 @@ def analyze(headers: dict[str, str], final_url: str, body: bytes, content_type: 
         return []
     out: list[Finding] = []
 
-    def add(check_id: str, title: str, desc: str, data: dict, impact: str, rec: str) -> None:
+    def add(check_id: str, title: str, desc: str, data: dict, impact: str, rec: str, limitation: str = LIMITATION) -> None:
         out.append(make_finding(check_id, title, [evidence("http_header", desc, SOURCE, data, observed_at=now)],
-                                impact, rec, limitation=LIMITATION))
+                                impact, rec, limitation=limitation))
 
     csp = h.get("content-security-policy", "")
     for check_id, header, title, impact, rec in _HEADER_FINDINGS:
@@ -111,6 +148,16 @@ def analyze(headers: dict[str, str], final_url: str, body: bytes, content_type: 
                 "Version banners help attackers pick known exploits for outdated software.",
                 "Remove version numbers from response headers.")
             break
+
+    for header, name, cycle, eol, latest in outdated_software(h, now.date()):
+        add("POSTURE.OUTDATED_SOFTWARE", f"{name} {cycle} is past end of life (since {eol})",
+            f"{header} header reports {name} {cycle}; that release line stopped receiving security fixes on {eol}",
+            {"header": header, "product": name, "cycle": cycle, "eol": eol, "latest_in_cycle": latest,
+             "eol_source": eol_table()["source"]},
+            "Software past end of life gets no security fixes, so known vulnerabilities stay open.",
+            f"Upgrade {name} to a supported release line.",
+            limitation="Based on the version the server announces. Banners can be edited, and some Linux "
+                       "distributions backport fixes to old versions, so this is not proof of a vulnerability.")
     return out
 
 

@@ -166,8 +166,10 @@ word of the brand appears in the registrable domain. The model extracts; code de
 ### Security posture (reported separately, 0 points)
 
 `POSTURE.NO_HSTS, POSTURE.NO_CSP, POSTURE.NO_XFO, POSTURE.NO_XCTO, POSTURE.MIXED_CONTENT, POSTURE.OLD_TLS_VERSION,
-POSTURE.SERVER_BANNER_VERSION, POSTURE.NO_SPF, POSTURE.NO_DMARC, POSTURE.DMARC_NOT_ENFORCED, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
+POSTURE.SERVER_BANNER_VERSION, POSTURE.OUTDATED_SOFTWARE, POSTURE.NO_SPF, POSTURE.NO_DMARC, POSTURE.DMARC_NOT_ENFORCED, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
 only when the user ticks "I own this site").
+
+`POSTURE.OUTDATED_SOFTWARE` compares the `Server` / `X-Powered-By` version (nginx, Apache httpd, PHP, OpenSSL, Tomcat) with an end-of-life snapshot from endoflife.date (`data/eol_software.json`). Only a release line past end of life fires; an old patch level inside a supported line does not, because distributions backport fixes.
 
 Posture checks run as group `posture.headers` (coverage weight 0, so they never change coverage or the score).
 The `severity` on a POSTURE finding is a display hint only (low for a missing defence, info for observations).
