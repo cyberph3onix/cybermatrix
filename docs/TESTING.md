@@ -3,7 +3,7 @@
 ## Automated (offline, no keys needed)
 
 ```bash
-cd backend && uv run pytest -q          # 537 tests, ~11 s; live tests are deselected by default
+cd backend && uv run pytest -q          # 655 tests, ~16 s; live tests are deselected by default
 cd backend && uv run ruff check app tests demo
 cd contracts && forge test -vv          # 70 tests
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
@@ -48,7 +48,7 @@ cd backend && DATABASE_URL=postgresql+asyncpg://cybermatrix:cybermatrix@localhos
 | `paypa1-secure-login.xyz` | Confirmed malicious: lookalike, credential form, 3-day-old domain, Safe Browsing hit |
 | `paypa1-verify-account.top` | Suspicious: same certificate as the first, so it clusters; graded, not all-or-nothing |
 | `esign-verify.in` | Confirmed malicious by `TLS.DISTRUSTED_CA`: the real eMudhra intermediate (public certificate; nothing is ever signed with its key) |
-| `www.sbi.co.in` | Low risk with 90% coverage and a full limitations list: the best a result can be |
+| `www.sbi.co.in` | Low risk with 88% coverage and a full limitations list: the best a result can be |
 | `www.incometax.gov.in` | Low risk: a real-brand login page on the official domain is not flagged |
 | `bit.ly/…` → `www.amazon.in` | Low risk: the shortener is expanded and the destination checked |
 | Genuine HDFC OTP SMS | Not flagged: "do not share this OTP" is a warning, not a request |
@@ -60,17 +60,19 @@ Each report says in its limitations that the data is recorded. `tests/test_demo_
 
 ### URLs and messages (demo seed, real pipeline, recorded network data)
 
-Produced by `python -m demo.seed`; `tests/test_demo_seed.py` asserts every row below.
+Produced by `python -m demo.seed`; `tests/test_demo_seed.py` asserts every row below. Observed 2026-11-10 on a clean
+clone (88%: the seed records no DNS, revocation or CT data for these hosts). CORR.* findings depend on what else is
+already stored, so a non-empty database can add them.
 
 | Case | Expected | Observed | Coverage | Confidence | Check IDs that fired |
 |---|---|---|---|---|---|
-| `paypa1-secure-login.xyz/signin` (fake PayPal login, listed by Safe Browsing) | malicious | `confirmed_malicious` (R1) | 90% | high | URL.INTEL.GSB, URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, TLS.CERT_VERY_NEW, DOMAIN.SUSPICIOUS_TLD, URL.KEYWORDS |
-| `paypa1-verify-account.top` (same kit, not yet listed) | suspicious or worse | `suspicious` (R3) | 90% | high | URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, CORR.SHARED_INFRA, TLS.CERT_VERY_NEW, … |
-| `esign-verify.in` (chain through the real eMudhra EM EV TLS CA - G3B) | malicious | `confirmed_malicious` (R1) | 90% | high | TLS.DISTRUSTED_CA, TLS.UNTRUSTED_ROOT, TLS.INCOMPLETE_CHAIN, URL.KEYWORDS |
-| Scam SMS: "PayPal alert… card number and the OTP… <link>" | malicious | `confirmed_malicious` (R1 via its link) | 65% | medium | URL.INTEL.GSB (link), MSG.CREDENTIAL_REQUEST, MSG.SCAM_PATTERN, MSG.URGENCY, … |
-| `www.sbi.co.in` (bank, page mentions logins) | not flagged | `low_risk` (R5) | 90% | high | none |
-| `www.incometax.gov.in` (real-brand login page on the official domain) | not flagged | `low_risk` (R5) | 90% | high | none |
-| `bit.ly/…` → `www.amazon.in` (shortener to an allowlisted shop) | not flagged | `low_risk` (R5) | 90% | high | URL.SHORTENER (low) |
+| `paypa1-secure-login.xyz/signin` (fake PayPal login, listed by Safe Browsing) | malicious | `confirmed_malicious` (R1) | 88% | high | URL.INTEL.GSB, URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, TLS.CERT_VERY_NEW, DOMAIN.SUSPICIOUS_TLD, URL.KEYWORDS |
+| `paypa1-verify-account.top` (same kit, not yet listed) | suspicious or worse | `suspicious` (R3) | 88% | high | URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, CORR.SHARED_INFRA, TLS.CERT_VERY_NEW, … |
+| `esign-verify.in` (chain through the real eMudhra EM EV TLS CA - G3B) | malicious | `confirmed_malicious` (R1) | 88% | high | TLS.DISTRUSTED_CA, TLS.INCOMPLETE_CHAIN (config), URL.KEYWORDS; certificate verdict `potentially_compromised` |
+| Scam SMS: "PayPal alert… card number and the OTP… <link>" | malicious | `confirmed_malicious` (R1 via its link) | 64% | medium | URL.INTEL.GSB (link), MSG.CREDENTIAL_REQUEST, MSG.SCAM_PATTERN, MSG.URGENCY, … |
+| `www.sbi.co.in` (bank, page mentions logins) | not flagged | `low_risk` (R5) | 88% | high | none |
+| `www.incometax.gov.in` (real-brand login page on the official domain) | not flagged | `low_risk` (R5) | 88% | high | none |
+| `bit.ly/…` → `www.amazon.in` (shortener to an allowlisted shop) | not flagged | `low_risk` (R5) | 88% | high | URL.SHORTENER (low) |
 | Genuine HDFC OTP SMS ("…Do not share this OTP with anyone") | not flagged | `inconclusive` (R4: AI step off in the seed) | 40% | low | MSG.AUTHORITY_IMPERSONATION (low) |
 
 The real OTP SMS used to come out `suspicious` because "Do not share this OTP" matched as a request for it. Negated
