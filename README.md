@@ -35,8 +35,8 @@ Threat reports from individuals also can't be trusted or shared without exposing
 
 | | |
 |---|---|
-| Live site | _filled at submission (Render)_. Free tier: the first request after idle takes about a minute |
-| Demo video | _filled at submission (YouTube)_ |
+| Live site | https://cybermatrix-web.onrender.com/ (free tier: the first request after idle can take about a minute) |
+| Demo video | https://www.youtube.com/watch?v=E_h-vFSAVU8 |
 | Testing report | [`docs/TESTING.md`](docs/TESTING.md) (observed results, raw data in [`docs/evidence/`](docs/evidence/)) |
 | Compliance matrix | [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) |
 

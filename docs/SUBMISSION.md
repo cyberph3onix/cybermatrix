@@ -6,9 +6,9 @@
 |---|---|---|
 | Project name | CyberMatrix | — |
 | GitHub repository | https://github.com/cyberph3onix/cybermatrix | `gh repo view`: PUBLIC; MIT licence |
-| Live website | _(Render URL, fill after deploy)_ | loads in incognito |
+| Live website | https://cybermatrix-web.onrender.com/ | loads in incognito |
 | Pitch deck | _(Slides link)_ | opens without login |
-| Demo video | _(YouTube link, unlisted is fine)_ | opens without login |
+| Demo video | https://www.youtube.com/watch?v=E_h-vFSAVU8 | opens without login |
 | Write-up | _(Google Doc made from README + docs/ARCHITECTURE.md)_ | opens without login |
 | Short description | below | ≤ 1000 chars |
 
