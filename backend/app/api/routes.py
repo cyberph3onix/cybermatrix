@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import AsyncIterator
+from datetime import UTC
 from typing import Annotated, Any
 
 import rfc8785
@@ -11,7 +12,7 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Resp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import store
+from app import ownership, store
 from app.ai.cluster_summary import add_summaries
 from app.ai.explain import explain
 from app.ai.llm import LlmUnavailable
@@ -19,7 +20,7 @@ from app.ai.redact import redact
 from app.api.state import AppState
 from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters
-from app.db import DisputeReasonRow, RegistryRow
+from app.db import DisputeReasonRow, OwnershipRow, RegistryRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
@@ -36,6 +37,10 @@ from app.schemas import (
     DisputeInfo,
     DisputePrepared,
     DisputeReasonRequest,
+    OwnershipChallenge,
+    OwnershipChallengeRequest,
+    OwnershipGrant,
+    OwnershipVerifyRequest,
     RegistryRecord,
     RegistryStatus,
     ReportHistory,
@@ -137,10 +142,11 @@ async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, q
 
 @router.post("/assess", response_model=AssessResponse, dependencies=[Depends(_limit("assess_limiter"))])
 async def assess(req: AssessRequest, request: Request, st: St, db: Db) -> AssessResponse:
-    if req.owns_site:  # ownership is not verified, so the extra probe gets its own tighter limit
-        _throttle(st.owns_limiter, client_ip(request))
     text = req.input.strip()
     kind = req.subject_type or detect_subject(text)
+    if req.owns_site:
+        _throttle(st.owns_limiter, client_ip(request))
+        await _require_ownership(db, text, req.ownership_token)
     if kind in (SubjectType.URL, SubjectType.DOMAIN):
         if len(text) > MAX_URL_CHARS:
             raise HTTPException(422, f"Links longer than {MAX_URL_CHARS} characters aren't supported.")
@@ -183,6 +189,53 @@ async def assess_qr(st: St, db: Db, file: Annotated[UploadFile, File(description
     if len(link) > MAX_URL_CHARS or not re.match(r"^https?://", link, re.IGNORECASE):
         raise HTTPException(422, "This QR code contains neither a web link nor a UPI payment request, so there is nothing to assess.")
     return await _assess_and_store(st, db, link, qr=True)
+
+
+# ---------- site ownership (gate for the exposed-file probe) ----------
+
+def _as_utc(dt):
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)  # SQLite returns naive datetimes
+
+
+async def _require_ownership(db: AsyncSession, target: str, token: str | None) -> None:
+    try:
+        domain = ownership.domain_of(target)
+    except ownership.OwnershipError as e:
+        raise HTTPException(422, str(e)) from None
+    row = (await db.execute(select(OwnershipRow).where(OwnershipRow.grant == token))).scalars().first() if token else None
+    if (row is None or not ownership.same(row.domain, domain) or row.grant_expires_at is None
+            or _as_utc(row.grant_expires_at) < utcnow()):
+        raise HTTPException(403, f"Prove you own {domain} first (POST /ownership/challenge, then /ownership/verify). "
+                                 "Checking a site's /.env and /.git needs the owner's permission.")
+
+
+@router.post("/ownership/challenge", response_model=OwnershipChallenge, dependencies=[Depends(_limit("assess_limiter"))])
+async def ownership_challenge(req: OwnershipChallengeRequest, db: Db) -> OwnershipChallenge:
+    try:
+        domain = ownership.domain_of(req.target)
+    except ownership.OwnershipError as e:
+        raise HTTPException(422, str(e)) from None
+    challenge, now = ownership.new_token(), utcnow()
+    db.add(OwnershipRow(challenge=challenge, domain=domain, created_at=now))
+    await db.commit()
+    return OwnershipChallenge(domain=domain, challenge=challenge, expires_at=now + ownership.CHALLENGE_TTL,
+                              **ownership.instructions(domain, challenge))
+
+
+@router.post("/ownership/verify", response_model=OwnershipGrant, dependencies=[Depends(_limit("assess_limiter"))])
+async def ownership_verify(req: OwnershipVerifyRequest, st: St, db: Db) -> OwnershipGrant:
+    row = await db.get(OwnershipRow, req.challenge)
+    if row is None or _as_utc(row.created_at) + ownership.CHALLENGE_TTL < utcnow():
+        raise HTTPException(404, "Unknown or expired challenge. Request a new one.")
+    check = st.ownership_checker or ownership.make_checker(st.api, st.deps.fetcher or ownership.safe_fetch)
+    method = await check(row.domain, row.challenge)
+    if method is None:
+        i = ownership.instructions(row.domain, row.challenge)
+        raise HTTPException(409, f"Not found yet. Add a TXT record {i['txt_name']} with value {i['txt_value']}, or serve "
+                                 f"{i['file_url']} containing the challenge. DNS changes can take a few minutes.")
+    row.grant, row.method, row.grant_expires_at = ownership.new_token(), method, utcnow() + ownership.GRANT_TTL
+    await db.commit()
+    return OwnershipGrant(domain=row.domain, ownership_token=row.grant, method=method, expires_at=row.grant_expires_at)
 
 
 # ---------- reports ----------

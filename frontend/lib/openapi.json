@@ -59,9 +59,22 @@
             "title": "Input",
             "type": "string"
           },
+          "ownership_token": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Grant from POST /ownership/verify for this site's domain",
+            "title": "Ownership Token"
+          },
           "owns_site": {
             "default": false,
-            "description": "User confirms they own the site: allows the exposed-file posture probe",
+            "description": "Run the exposed-file posture probe. Needs ownership_token",
             "title": "Owns Site",
             "type": "boolean"
           },
@@ -933,6 +946,119 @@
         "title": "Indicator",
         "type": "object"
       },
+      "OwnershipChallenge": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge": {
+            "title": "Challenge",
+            "type": "string"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "file_body": {
+            "title": "File Body",
+            "type": "string"
+          },
+          "file_url": {
+            "title": "File Url",
+            "type": "string"
+          },
+          "txt_name": {
+            "title": "Txt Name",
+            "type": "string"
+          },
+          "txt_value": {
+            "title": "Txt Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "challenge",
+          "txt_name",
+          "txt_value",
+          "file_url",
+          "file_body",
+          "expires_at"
+        ],
+        "title": "OwnershipChallenge",
+        "type": "object"
+      },
+      "OwnershipChallengeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "target": {
+            "description": "Domain or link of the site you own",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "OwnershipChallengeRequest",
+        "type": "object"
+      },
+      "OwnershipGrant": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "dns",
+              "file"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "ownership_token": {
+            "description": "Send as ownership_token with owns_site=true on POST /assess",
+            "title": "Ownership Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "ownership_token",
+          "method",
+          "expires_at"
+        ],
+        "title": "OwnershipGrant",
+        "type": "object"
+      },
+      "OwnershipVerifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "challenge": {
+            "maxLength": 32,
+            "minLength": 32,
+            "title": "Challenge",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge"
+        ],
+        "title": "OwnershipVerifyRequest",
+        "type": "object"
+      },
       "RedirectHop": {
         "additionalProperties": false,
         "properties": {
@@ -1515,6 +1641,82 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/ownership/challenge": {
+      "post": {
+        "operationId": "ownership_challenge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnershipChallenge"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ownership Challenge"
+      }
+    },
+    "/ownership/verify": {
+      "post": {
+        "operationId": "ownership_verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnershipGrant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ownership Verify"
       }
     },
     "/reports/{report_id}": {

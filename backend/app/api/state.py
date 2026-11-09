@@ -9,6 +9,7 @@ from app.ai.llm import LlmClient
 from app.cache import SqlIntelCache
 from app.db import Database
 from app.fetch.api_client import ApiClient
+from app.ownership import Checker
 from app.pipeline import Deps
 from app.ratelimit import RateLimiter
 from app.registry.chain import ChainClient
@@ -29,11 +30,12 @@ class AppState:
     register_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(5, 60))  # each one costs gas
     # Server-wide caps: per-IP limits don't stop someone rotating addresses.
     register_global: RateLimiter = field(default_factory=lambda: RateLimiter(REGISTER_MAX_PER_HOUR, 3600))
-    owns_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(3, 60))  # unverified "I own this site" probes
+    owns_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(3, 60))  # exposed-file probes (owner-verified)
     verify_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(30, 60))  # each one is an RPC call
     assess_slots: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(MAX_CONCURRENT_ASSESSMENTS))
     register_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     cluster_summaries: dict[str, str] = field(default_factory=dict)  # cache_key -> text
+    ownership_checker: Checker | None = None  # None → DNS-over-HTTPS + safe_fetch (app.ownership.make_checker)
 
     def get_chain(self) -> ChainClient:
         if self.chain is None:

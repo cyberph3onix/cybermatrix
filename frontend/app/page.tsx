@@ -4,12 +4,15 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { assess, assessQr } from "@/lib/api";
 import { detectSubjectType, SUBJECT_LABEL } from "@/lib/detect";
+import type { OwnershipGrant } from "@/lib/types";
+import { OwnershipPanel } from "@/components/OwnershipPanel";
 
 export default function Home() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [qr, setQr] = useState<File | null>(null);
   const [owns, setOwns] = useState(false);
+  const [grant, setGrant] = useState<OwnershipGrant | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -29,7 +32,9 @@ export default function Home() {
         : await assess({
             input: text,
             subject_type: detected,
-            owns_site: owns && (detected === "url" || detected === "domain"),
+            // the exposure probe needs proof of ownership; without a grant the link is assessed normally
+            owns_site: owns && grant !== null && showOwns,
+            ownership_token: owns && showOwns ? grant?.ownership_token : undefined,
           });
       router.push(`/report/${report_id}`);
     } catch (e) {
@@ -89,9 +94,10 @@ export default function Home() {
           />
           <span>
             I own this site. Also check whether <code>/.git/HEAD</code> and <code>/.env</code> are publicly
-            readable (two extra requests to the site).
+            readable (two extra requests to the site, after you prove ownership).
           </span>
         </label>
+        {owns && showOwns && <OwnershipPanel target={text} grant={grant} onGrant={setGrant} />}
 
         <div className="flex flex-wrap items-center gap-3">
           <button

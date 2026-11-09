@@ -45,7 +45,8 @@ verify/verify.py  standalone: report.json + RPC + address → MATCH / MISMATCH (
 backend/app/
   main.py, api/                 routes: POST /assess, GET /reports/{id}, POST /reports/{id}/register,
                                 GET /reports/{id}/verify, GET /clusters, POST /assess/qr,
-                                GET /reports/{id}/history, POST /reports/{id}/dispute-reason, POST /reports/{id}/reassess
+                                GET /reports/{id}/history, POST /reports/{id}/dispute-reason, POST /reports/{id}/reassess,
+                                POST /ownership/challenge, POST /ownership/verify
   schemas.py                    THE data contract — do not change shape without updating frontend types
   fetch/safe_fetch.py, fetch/api_client.py
   checks/url_structure.py, lookalike.py, redirects.py, page.py, domain_rdap.py,

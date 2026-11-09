@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ownership/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ownership Challenge */
+        post: operations["ownership_challenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ownership/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ownership Verify */
+        post: operations["ownership_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}": {
         parameters: {
             query?: never;
@@ -255,8 +289,13 @@ export interface components {
             /** Input */
             input: string;
             /**
+             * Ownership Token
+             * @description Grant from POST /ownership/verify for this site's domain
+             */
+            ownership_token?: string | null;
+            /**
              * Owns Site
-             * @description User confirms they own the site: allows the exposed-file posture probe
+             * @description Run the exposed-file posture probe. Needs ownership_token
              * @default false
              */
             owns_site: boolean;
@@ -604,6 +643,59 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** OwnershipChallenge */
+        OwnershipChallenge: {
+            /** Challenge */
+            challenge: string;
+            /** Domain */
+            domain: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** File Body */
+            file_body: string;
+            /** File Url */
+            file_url: string;
+            /** Txt Name */
+            txt_name: string;
+            /** Txt Value */
+            txt_value: string;
+        };
+        /** OwnershipChallengeRequest */
+        OwnershipChallengeRequest: {
+            /**
+             * Target
+             * @description Domain or link of the site you own
+             */
+            target: string;
+        };
+        /** OwnershipGrant */
+        OwnershipGrant: {
+            /** Domain */
+            domain: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "dns" | "file";
+            /**
+             * Ownership Token
+             * @description Send as ownership_token with owns_site=true on POST /assess
+             */
+            ownership_token: string;
+        };
+        /** OwnershipVerifyRequest */
+        OwnershipVerifyRequest: {
+            /** Challenge */
+            challenge: string;
+        };
         /** RedirectHop */
         RedirectHop: {
             /**
@@ -873,6 +965,72 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    ownership_challenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnershipChallenge"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ownership_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnershipGrant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

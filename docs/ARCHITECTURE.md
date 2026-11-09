@@ -19,13 +19,16 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
 | Backend and verify.py hash disagreement | None found. Canonical bytes round-trip, including odd Unicode, and the verify.py function matches the backend on the sample report |
 | Legitimate top site rated badly | **Fixed.** A partner or payment logo on an allowlisted site's login page produced `suspicious`. On allowlisted hosts a logo alone no longer counts as a brand claim; the page title and og:site_name still do |
 | Rotating IPs to drain the relayer's gas | **Mitigated.** Server-wide cap of `REGISTER_MAX_PER_HOUR` (default 30) on new registrations, on top of the per-IP limit |
-| Using "I own this site" to probe someone else's `/.env` | **Mitigated, not solved.** Own limit of 3 per minute per IP; see below |
+| Using "I own this site" to probe someone else's `/.env` | **Fixed.** Needs a DNS-TXT or well-known-file proof of ownership (`app/ownership.py`); still limited to 3 probes per minute per IP |
 | Contract state machine | 46 Foundry tests pass; findings below |
 
 ## Known limitations
 
-1. **Ownership is not verified.** `owns_site` is a checkbox. Anyone can ask us to GET `/.git/HEAD` and `/.env` on a
-   third-party site and publish whether they were readable (never the contents). Proper fix: DNS TXT or file-token proof.
+1. **Ownership is proven (fixed).** The `/.git/HEAD` and `/.env` probe needs a grant from `POST /ownership/verify`,
+   issued only after the domain shows our random challenge in a `_cybermatrix-verify` TXT record or at
+   `/.well-known/cybermatrix-verify.txt` (a redirect to another domain does not count). Grants last 24 h and cover one
+   registrable domain. Someone who controls a subdomain's web root but not DNS can still verify via the file, which
+   matches how ACME HTTP-01 treats web-root control.
 2. **Disputes cost a bond (fixed in v2).** v1 let anyone knock a `Validated` report to `Disputed` for the price of
    gas. v2 (`0x46509457…BbB4`) requires exactly `disputeBond` (0.001 ETH) per dispute: a validator who rejects the
    report returns it, one who re-validates keeps it, and a revision by the reporter returns it. Payouts are pull-based

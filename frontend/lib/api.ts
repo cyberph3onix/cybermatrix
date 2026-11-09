@@ -8,6 +8,8 @@ import type {
   AssessmentReport,
   Cluster,
   DisputePrepared,
+  OwnershipChallenge,
+  OwnershipGrant,
   RegistryRecord,
   ReportHistory,
   VerificationResult,
@@ -132,4 +134,13 @@ export async function prepareDispute(id: string, reason: string): Promise<Disput
 /** Assess the same link again and register it as a revision; the old version becomes Superseded. */
 export async function reassessReport(id: string): Promise<AssessResponse> {
   return request(`/reports/${encodeURIComponent(id)}/reassess`, json("POST"), 290_000);
+}
+
+/** Start proving you own a site (needed before the /.env and /.git exposure check). */
+export async function ownershipChallenge(target: string): Promise<OwnershipChallenge> {
+  return request("/ownership/challenge", json("POST", { target }));
+}
+
+export async function ownershipVerify(challenge: string): Promise<OwnershipGrant> {
+  return request("/ownership/verify", json("POST", { challenge }), 45_000);
 }

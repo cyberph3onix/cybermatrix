@@ -284,12 +284,39 @@ class DisputePrepared(Strict):
     calldata: str = Field(description="ABI-encoded disputeReport call, ready for eth_sendTransaction")
 
 
+class OwnershipChallengeRequest(Strict):
+    target: str = Field(min_length=1, max_length=2048, description="Domain or link of the site you own")
+
+
+class OwnershipChallenge(Strict):
+    domain: str
+    challenge: str
+    txt_name: str
+    txt_value: str
+    file_url: str
+    file_body: str
+    expires_at: datetime
+
+
+class OwnershipVerifyRequest(Strict):
+    challenge: str = Field(min_length=32, max_length=32)
+
+
+class OwnershipGrant(Strict):
+    domain: str
+    ownership_token: str = Field(description="Send as ownership_token with owns_site=true on POST /assess")
+    method: Literal["dns", "file"]
+    expires_at: datetime
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):
     input: str = Field(min_length=1, max_length=20_000)
     subject_type: SubjectType | None = Field(default=None, description="Auto-detected if omitted")
-    owns_site: bool = Field(default=False, description="User confirms they own the site: allows the exposed-file posture probe")
+    owns_site: bool = Field(default=False, description="Run the exposed-file posture probe. Needs ownership_token")
+    ownership_token: str | None = Field(default=None, max_length=64,
+                                        description="Grant from POST /ownership/verify for this site's domain")
 
     @field_validator("input")
     @classmethod

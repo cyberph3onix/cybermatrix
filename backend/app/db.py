@@ -67,6 +67,19 @@ class DisputeReasonRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class OwnershipRow(Base):
+    """An ownership challenge and, once proven, its grant (see app/ownership.py)."""
+
+    __tablename__ = "ownership"
+
+    challenge: Mapped[str] = mapped_column(String(32), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(253), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    grant: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True)
+    method: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    grant_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class IntelCacheRow(Base):
     """Threat-intel response cache. The key is a SHA-256 of the lookup, so URLs aren't duplicated here."""
 

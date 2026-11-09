@@ -154,11 +154,63 @@ async def test_every_llm_call_in_the_message_pipeline_sees_only_redacted_text():
 
 # ---------- abuse limits ----------
 
-def test_unverified_owns_site_probe_has_its_own_tight_limit(client):
+def test_owns_site_without_proof_is_refused_and_rate_limited(client):
+    """Limitation 1 (fixed): "I own this site" alone no longer lets anyone probe a third party's /.env."""
     url = "https://kyc-verify-now.top/"
-    codes = [client.post("/assess", json={"input": url, "owns_site": True}).status_code for _ in range(5)]
-    assert codes[:3] == [200, 200, 200] and codes[3:] == [429, 429]
+    r = client.post("/assess", json={"input": url, "owns_site": True})
+    assert r.status_code == 403 and "Prove you own kyc-verify-now.top" in r.json()["detail"]
+    bogus = client.post("/assess", json={"input": url, "owns_site": True, "ownership_token": "0" * 32}).status_code
+    codes = [client.post("/assess", json={"input": url, "owns_site": True}).status_code for _ in range(2)]
+    assert bogus == 403 and codes == [403, 429]
     assert client.post("/assess", json={"input": url}).status_code == 200  # ordinary assessments unaffected
+
+
+def test_ownership_proof_unlocks_the_probe_for_that_domain_only(client):
+    proven: dict[str, str] = {}
+
+    async def checker(domain, challenge):
+        return "dns" if proven.get(domain) == challenge else None
+    client.app.state.cm.ownership_checker = checker
+
+    ch = client.post("/ownership/challenge", json={"target": "https://www.mysite-example.com/a"}).json()
+    assert ch["domain"] == "mysite-example.com" and ch["txt_name"] == "_cybermatrix-verify.mysite-example.com"
+    assert ch["txt_value"] == "cybermatrix-verify=" + ch["challenge"]
+    assert client.post("/ownership/verify", json={"challenge": ch["challenge"]}).status_code == 409  # not published yet
+    proven["mysite-example.com"] = ch["challenge"]
+    g = client.post("/ownership/verify", json={"challenge": ch["challenge"]}).json()
+    assert g["method"] == "dns" and g["domain"] == "mysite-example.com"
+
+    ok = client.post("/assess", json={"input": "https://shop.mysite-example.com/", "owns_site": True,
+                                      "ownership_token": g["ownership_token"]})
+    assert ok.status_code == 200, ok.text
+    other = client.post("/assess", json={"input": "https://kyc-verify-now.top/", "owns_site": True,
+                                         "ownership_token": g["ownership_token"]})
+    assert other.status_code == 403  # a grant for one domain never covers another
+    assert client.post("/ownership/verify", json={"challenge": "f" * 32}).status_code == 404
+
+
+async def test_real_checker_accepts_txt_or_well_known_file():
+    import httpx
+    import respx
+
+    from app import ownership
+    from app.fetch.api_client import ApiClient
+    from tests.conftest import fake_fetcher, fetch_result
+    ch = "a" * 32
+    with respx.mock:
+        respx.get(ownership.DOH).mock(return_value=httpx.Response(200, json={"Status": 0, "Answer": [
+            {"type": 16, "data": f'"cybermatrix-verify={ch}"'}]}))
+        nofile = fake_fetcher(fetch_result(["https://mysite.example/.well-known/cybermatrix-verify.txt"], b"", status=404))
+        assert await ownership.make_checker(ApiClient(), nofile)("mysite.example", ch) == "dns"
+        respx.get(ownership.DOH).mock(return_value=httpx.Response(200, json={"Status": 0}))
+        assert await ownership.make_checker(ApiClient(), nofile)("mysite.example", ch) is None
+        good = fake_fetcher(fetch_result(["https://mysite.example/.well-known/cybermatrix-verify.txt"], ch.encode() + b"\n",
+                                         "text/plain"))
+        assert await ownership.make_checker(ApiClient(), good)("mysite.example", ch) == "file"
+        # a redirect to someone else's domain serving the token does not prove ownership of this one
+        moved = fake_fetcher(fetch_result(["https://mysite.example/.well-known/cybermatrix-verify.txt",
+                                           "https://attacker.example/t.txt"], ch.encode(), "text/plain"))
+        assert await ownership.make_checker(ApiClient(), moved)("mysite.example", ch) is None
 
 
 def test_registrations_are_capped_server_wide_not_just_per_ip(tmp_path, chain):
