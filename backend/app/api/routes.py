@@ -12,16 +12,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import store
+from app.ai.cluster_summary import add_summaries
 from app.ai.explain import explain
 from app.ai.llm import LlmUnavailable
 from app.api.state import AppState
+from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters
 from app.db import RegistryRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
+from app.pipeline_upi import UpiError, assess_upi, is_upi
+from app.pipeline_upi import finalize as finalize_upi
 from app.qr import QrError, decode_qr
-from app.ratelimit import limit_dependency
+from app.ratelimit import client_ip, limit_dependency
 from app.registry.chain import ChainClient, ChainError, ChainUnavailable
 from app.schemas import (
     AssessmentReport,
@@ -60,6 +64,12 @@ def _limit(name: str):
     async def dep(request: Request) -> None:
         await limit_dependency(getattr(request.app.state.cm, name))(request)
     return dep
+
+
+def _throttle(limiter, key: str) -> None:
+    wait = limiter.check(key)
+    if wait is not None:
+        raise HTTPException(429, f"Too many requests. Try again in {wait} s.", headers={"Retry-After": str(wait)})
 
 
 async def _row_or_404(db: AsyncSession, report_id: str):
@@ -110,15 +120,17 @@ async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, q
         raise HTTPException(422, "Only http and https links can be assessed.")
     async with st.assess_slots:
         report = await assess_url(url_input, deps=st.deps, owns_site=owns_site)
-    report = await _explain(st, report)
+    report = await _explain(st, await apply_correlation(db, report))
     if qr:
-        report = report.model_copy(update={"subject_type": SubjectType.QR})
+        report = report.model_copy(update={"subject_type": SubjectType.QR.value})
     await store.save_report(db, report)
     return AssessResponse(report_id=report.report_id)
 
 
 @router.post("/assess", response_model=AssessResponse, dependencies=[Depends(_limit("assess_limiter"))])
-async def assess(req: AssessRequest, st: St, db: Db) -> AssessResponse:
+async def assess(req: AssessRequest, request: Request, st: St, db: Db) -> AssessResponse:
+    if req.owns_site:  # ownership is not verified, so the extra probe gets its own tighter limit
+        _throttle(st.owns_limiter, client_ip(request))
     text = req.input.strip()
     kind = req.subject_type or detect_subject(text)
     if kind in (SubjectType.URL, SubjectType.DOMAIN):
@@ -130,10 +142,11 @@ async def assess(req: AssessRequest, st: St, db: Db) -> AssessResponse:
             raise HTTPException(422, "That doesn't look like a single email address.")
         async with st.assess_slots:
             report = await assess_email(text, deps=st.deps)
-        report = await _explain(st, report)
+        report = await _explain(st, await apply_correlation(db, report))
     elif kind == SubjectType.MESSAGE:
         async with st.assess_slots:
             report = await assess_message(req.input, deps=st.deps, llm=st.llm)
+        report = await apply_correlation(db, report)
         report = await _explain(st, report, report.subject)  # report.subject is the redacted text
     else:
         raise HTTPException(422, "Submit a link, domain, email address or message text.")
@@ -149,8 +162,16 @@ async def assess_qr(st: St, db: Db, file: Annotated[UploadFile, File(description
         link = decode_qr(data)
     except QrError as e:
         raise HTTPException(422, str(e)) from None
+    if is_upi(link):
+        try:
+            report = assess_upi(link)
+        except UpiError as e:
+            raise HTTPException(422, str(e)) from None
+        report = finalize_upi(await _explain(st, await apply_correlation(db, report)))
+        await store.save_report(db, report)
+        return AssessResponse(report_id=report.report_id)
     if len(link) > MAX_URL_CHARS or not re.match(r"^https?://", link, re.IGNORECASE):
-        raise HTTPException(422, "This QR code doesn't contain a web link, so there is nothing to assess.")
+        raise HTTPException(422, "This QR code contains neither a web link nor a UPI payment request, so there is nothing to assess.")
     return await _assess_and_store(st, db, link, qr=True)
 
 
@@ -189,6 +210,7 @@ async def register(report_id: str, st: St, db: Db) -> RegistryRecord:
         existing = await store.get_registry(db, report_id)
         if existing is not None and existing.onchain_id is not None:
             return existing
+        _throttle(st.register_global, "all")  # only new on-chain writes count against the server-wide cap
         chain = _get_chain(st)
         report = store.parse_report(row)
         try:
@@ -243,8 +265,9 @@ async def verify_uploaded(request: Request, st: St, db: Db,
 # ---------- correlation ----------
 
 @router.get("/clusters", response_model=list[Cluster])
-async def clusters(db: Db) -> list[Cluster]:
-    return build_clusters(await store.indicator_rows(db))
+async def clusters(st: St, db: Db) -> list[Cluster]:
+    built = build_clusters(await store.indicator_rows(db))
+    return await add_summaries(st.llm, built, st.cluster_summaries)
 
 
 @router.get("/health")

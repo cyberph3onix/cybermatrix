@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.brands import BrandIndex, get_index
-from app.checks import domain_rdap, headers, lookalike, page, redirects, tls_chain, tls_ct, url_structure
+from app.checks import domain_rdap, headers, lookalike, page, page_llm, redirects, tls_chain, tls_ct, url_structure
 from app.checks.base import AssessmentContext, CheckResult, make_run
 from app.checks.intel import gsb, openphish, urlhaus, virustotal
 from app.engine import coverage as cov
@@ -93,6 +93,7 @@ class Deps:
     tls_scanner: Callable | None = None
     api: object | None = None
     cache: object | None = None
+    llm: object | None = None
     checks: list[CheckSpec] = field(default_factory=lambda: list(CHECKS))
 
 
@@ -128,9 +129,12 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
     await warm_up()
 
     ctx = AssessmentContext(url=parsed, brands=brands, now=now, fetcher=deps.fetcher, tls_scanner=deps.tls_scanner,
-                            api=deps.api, cache=deps.cache, owns_site=owns_site)
+                            api=deps.api, cache=deps.cache, llm=deps.llm, owns_site=owns_site)
+    specs = list(deps.checks)
+    if deps.llm is not None and all(sp.group != page_llm.GROUP for sp in specs):
+        specs.append(CheckSpec(page_llm.GROUP, page_llm.run, 45, page_llm.SOURCE))  # weight 0; waits for the fetch
     try:
-        results = await asyncio.gather(*(run_check(s, ctx) for s in deps.checks))
+        results = await asyncio.gather(*(run_check(s, ctx) for s in specs))
     finally:
         for t in (ctx._fetch_task, ctx._tls_task):
             if t is not None and not t.done():
@@ -182,6 +186,8 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
     limitations = list(FIXED_LIMITATIONS)
     for r in runs:
         status = r.status.value if isinstance(r.status, CheckStatus) else r.status
+        if r.check_group == page_llm.GROUP and status == CheckStatus.SKIPPED.value:
+            continue  # optional extra, weight 0: nothing was lost by not running it
         if status != CheckStatus.COMPLETED.value:
             limitations.append(f"{r.check_group} {status}" + (f": {r.detail}" if r.detail else "."))
     if damp.dropped:

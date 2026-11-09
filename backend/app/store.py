@@ -11,6 +11,12 @@ from app.db import IndicatorRow, RegistryRow, ReportRow
 from app.schemas import AssessmentReport, RegistryRecord, RegistryStatus, canonical_bytes, utcnow
 
 
+def _val(x) -> str:
+    """Plain string of an enum-or-str field. model_copy(update=...) skips validation, so a field can hold an Enum
+    member, and str(Enum) is 'RiskClass.X', not the value that was hashed and that queries filter on."""
+    return str(getattr(x, "value", x))
+
+
 def hash_bytes(canonical: bytes) -> str:
     return "0x" + keccak(canonical).hex()
 
@@ -20,8 +26,8 @@ async def save_report(session: AsyncSession, report: AssessmentReport) -> str:
     canonical = canonical_bytes(report)
     h = hash_bytes(canonical)
     session.add(ReportRow(
-        report_id=report.report_id, subject_type=str(report.subject_type),
-        normalized_subject=report.normalized_subject[:2048], classification=str(report.classification),
+        report_id=report.report_id, subject_type=_val(report.subject_type),
+        normalized_subject=report.normalized_subject[:2048], classification=_val(report.classification),
         score=report.score, created_at=report.created_at, report_hash=h, canonical=canonical))
     await session.flush()  # the FK target must exist before indicators
     seen: set[tuple[str, str]] = set()

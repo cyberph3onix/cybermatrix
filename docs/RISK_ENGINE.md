@@ -147,6 +147,16 @@ Extracted URLs run through the full URL pipeline, and their findings are attache
 | CORR.PRIOR_REPORTS | correlation | medium | heuristic | Shares indicator(s) with ≥ 2 prior unvalidated reports |
 | CORR.SHARED_INFRA | correlation | low | heuristic | Same IP/ASN/nameserver/cert as a prior suspicious report |
 
+Implementation (`correlation/checks.py`), deliberately conservative so a legitimate site is never dragged down:
+only prior reports at `suspicious` or worse count; allowlisted domains and shorteners never correlate; IP, ASN,
+nameserver and certificate matches only ever yield CORR.SHARED_INFRA; `VALIDATED_MATCH` needs a specific indicator
+(domain, email, phone, UPI ID, crypto address) and a registry row whose status is `validated` as last seen by this
+server. Evidence lists matching report IDs and never the matching email, phone, UPI or crypto value.
+
+`PAGE.LLM_CLAIMED_BRAND` (`checks/page_llm.py`, group `page.llm`, weight 0) fires only when the model extracted a
+brand that is not in brands.json, the page asks for credentials or payment, the host is not allowlisted and no
+word of the brand appears in the registrable domain. The model extracts; code decides.
+
 ### Security posture (reported separately, 0 points)
 
 `POSTURE.NO_HSTS, POSTURE.NO_CSP, POSTURE.NO_XFO, POSTURE.NO_XCTO, POSTURE.MIXED_CONTENT, POSTURE.OLD_TLS_VERSION,
@@ -155,7 +165,7 @@ only when the user ticks "I own this site").
 
 Posture checks run as group `posture.headers` (coverage weight 0, so they never change coverage or the score).
 The `severity` on a POSTURE finding is a display hint only (low for a missing defence, info for observations).
-`POSTURE.EXPOSED_FILE` is not implemented yet: it needs the "I own this site" flag on `POST /assess`.
+`POSTURE.EXPOSED_FILE` runs only when `POST /assess` carries `owns_site: true` (two GETs through safe_fetch, no file contents kept). Ownership is not verified, so the flag has its own limit of 3 requests per minute per IP.
 
 ## 7. LLM boundaries
 

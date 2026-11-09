@@ -56,6 +56,12 @@ export default function ClustersPage() {
                     {c.report_ids.length} reports · highest class:{" "}
                     <span className={`font-medium ${s.text}`}>{s.label}</span> · {day(c.first_seen)} to {day(c.last_seen)}
                   </p>
+                  {c.summary && (
+                    <p className="mt-3 text-sm">
+                      {c.summary}{" "}
+                      <span className="text-xs text-muted">AI-written description ({c.summary_model}); the grouping itself is rule-based.</span>
+                    </p>
+                  )}
 
                   <h3 className="mt-4 text-sm font-semibold">Shared indicators</h3>
                   <ul className="mt-1 divide-y divide-rule text-sm">

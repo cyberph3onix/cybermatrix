@@ -179,6 +179,22 @@ def _extractor() -> tldextract.TLDExtract:
     )
 
 
+@cache
+def _icann_extractor() -> tldextract.TLDExtract:
+    return tldextract.TLDExtract(
+        include_psl_private_domains=False, suffix_list_urls=(), cache_dir=None, extra_suffixes=_EXTRA_SUFFIXES
+    )
+
+
+def icann_registrable_domain(host: str) -> str:
+    """eTLD+1 over ICANN suffixes only, i.e. the domain someone actually registered. For `x.appspot.com` or
+    `me.github.io` this is `appspot.com` / `github.io`, which is what RDAP knows about."""
+    if parse_ip_literal(host):
+        return host
+    r = _icann_extractor()(host)
+    return f"{r.domain}.{r.suffix}" if r.domain and r.suffix else host
+
+
 def split_domain(host: str) -> tuple[str, str, str]:
     """(subdomain, domain_label, suffix)."""
     r = _extractor()(host)

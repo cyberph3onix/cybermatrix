@@ -17,7 +17,7 @@ from app.checks.base import AssessmentContext, CheckResult, evidence, make_findi
 from app.checks.intel.common import FETCH_WAIT_S, cached_json
 from app.fetch.api_client import ApiClient, ApiNotFound, ApiUnavailable
 from app.schemas import CheckStatus, Finding
-from app.urlutil import URLParseError, parse_url, registrable_domain
+from app.urlutil import URLParseError, icann_registrable_domain, parse_url
 
 GROUP = "domain.rdap"
 SOURCE = "rdap"
@@ -107,7 +107,7 @@ def _domain_of(url: str) -> str | None:
         host = parse_url(url).host
     except URLParseError:
         return None
-    return None if parse_url(url).ip else registrable_domain(host)
+    return None if parse_url(url).ip else icann_registrable_domain(host)
 
 
 async def run(ctx: AssessmentContext) -> CheckResult:
@@ -116,7 +116,7 @@ async def run(ctx: AssessmentContext) -> CheckResult:
         if ctx.url.ip is not None:
             return make_run(GROUP, CheckStatus.SKIPPED, SOURCE, t0, "IP address host has no domain registration"), []
         first_url = ctx.url.url_without_userinfo()
-        domain = registrable_domain(ctx.url.host)
+        domain = icann_registrable_domain(ctx.url.host)
         info = await _query(ctx, domain)
         if not info.get("registered"):
             return make_run(GROUP, CheckStatus.UNAVAILABLE, SOURCE, t0, "RDAP response has no registration date"), []

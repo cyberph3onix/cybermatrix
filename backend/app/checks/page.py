@@ -116,7 +116,11 @@ def analyze(html: str, page_url: str, idx: BrandIndex) -> list[Finding]:
     page_reg = registrable_domain(u.host)
     official = idx.official_brand(u.host, u.path)
     out: list[Finding] = []
-    claims = [c for c in _claims(facts, idx) if official is None or official.id != c[0].id]
+    trusted_host = idx.allowlisted(u.host, u.path or "/")
+    # A logo alone is weak identity: partner / payment-method logos are normal on big sites. On an allowlisted host
+    # only the title and og:site_name count, which still catches a compromised legitimate site hosting a fake page.
+    claims = [c for c in _claims(facts, idx) if (official is None or official.id != c[0].id)
+              and not (trusted_host and c[1] == "logo_alt")]
     fields = sorted(set(facts.sensitive_fields))
 
     if claims:

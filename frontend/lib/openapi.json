@@ -504,6 +504,29 @@
             "title": "Shared Indicators",
             "type": "array"
           },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Two-sentence AI-written description; null when no LLM is configured",
+            "title": "Summary"
+          },
+          "summary_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Model"
+          },
           "top_classification": {
             "$ref": "#/components/schemas/RiskClass"
           }
@@ -516,7 +539,9 @@
           "report_ids",
           "top_classification",
           "shared_indicators",
-          "member_domains"
+          "member_domains",
+          "summary",
+          "summary_model"
         ],
         "title": "Cluster",
         "type": "object"

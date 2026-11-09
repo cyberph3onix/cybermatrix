@@ -139,5 +139,5 @@ no on-chain role. After changing the contract, run `contracts/script/export_abi.
 ## Conventions
 
 Python 3.12, FastAPI, Pydantic v2, httpx, ruff, pytest. Typed everything. Small modules. Tests use recorded
-fixtures, never live phishing URLs (they die). The runtime LLM is Gemini (`gemini-2.5-flash`, override with GEMINI_MODEL) when GEMINI_API_KEY is set, else Claude Haiku 5.5 (`claude-haiku-5-5`), with
+fixtures, never live phishing URLs (they die). The runtime LLM is Gemini (`gemini-2.5-flash-lite`, override with GEMINI_MODEL) when GEMINI_API_KEY is set, else Claude Haiku 5.5 (`claude-haiku-5-5`), with
 structured output validated against Pydantic.

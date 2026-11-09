@@ -374,6 +374,13 @@ export interface components {
             report_ids: string[];
             /** Shared Indicators */
             shared_indicators: components["schemas"]["ClusterIndicator"][];
+            /**
+             * Summary
+             * @description Two-sentence AI-written description; null when no LLM is configured
+             */
+            summary: string | null;
+            /** Summary Model */
+            summary_model: string | null;
             top_classification: components["schemas"]["RiskClass"];
         };
         /** ClusterIndicator */

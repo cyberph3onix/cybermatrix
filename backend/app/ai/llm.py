@@ -46,7 +46,8 @@ class AnthropicLlm:
         raise LlmUnavailable("anthropic: no structured output")
 
 
-GEMINI_MODEL = "gemini-2.5-flash"
+# Flash-Lite: the free tier of plain 2.5 Flash allows only ~20 requests/day, far too few for a demo.
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 

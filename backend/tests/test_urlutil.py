@@ -46,3 +46,11 @@ def test_parse_backslash_and_userinfo():
     assert u.scheme == "https" and u.port == 443
     u = parse_url("http://Exaмple.com:8080/")
     assert u.host.startswith("xn--") and u.port == 8080 and u.explicit_port
+
+
+def test_icann_registrable_domain_ignores_private_suffixes():
+    from app.urlutil import icann_registrable_domain, registrable_domain
+    assert registrable_domain("testsafebrowsing.appspot.com") == "testsafebrowsing.appspot.com"
+    assert icann_registrable_domain("testsafebrowsing.appspot.com") == "appspot.com"
+    assert icann_registrable_domain("login.example.co.uk") == "example.co.uk"
+    assert icann_registrable_domain("203.0.113.9") == "203.0.113.9"

@@ -14,6 +14,7 @@ from app.schemas import CheckRun, CheckStatus, Evidence, Finding, utcnow
 from app.urlutil import ParsedURL
 
 if TYPE_CHECKING:
+    from app.ai.llm import LlmClient
     from app.brands import BrandIndex
     from app.cache import IntelCache
     from app.checks.tls_chain import TlsScan
@@ -32,6 +33,7 @@ class AssessmentContext:
     tls_scanner: Callable[[str, int], Awaitable[TlsScan]] | None = None
     api: ApiClient | None = None
     cache: IntelCache | None = None
+    llm: LlmClient | None = None  # optional: only page.llm uses it
     owns_site: bool = False  # user ticked "I own this site": enables POSTURE.EXPOSED_FILE
     _fetch_task: asyncio.Task | None = field(default=None, repr=False)
     _tls_task: asyncio.Task | None = field(default=None, repr=False)

@@ -257,3 +257,36 @@ def test_contract_revert_is_502_without_leaking_detail(client, chain):
 def test_indicators_persisted_and_clusters_endpoint(client):
     assess(client)
     assert client.get("/clusters").json() == []  # one report can't form a cluster
+
+
+# ---------- UPI QR + correlation through the API ----------
+
+SCAM_SMS = "URGENT: your SBI account is blocked. Share the OTP now and pay Rs 10 to scammer@oksbi to unblock."
+
+
+def test_upi_qr_with_unknown_payee_is_inconclusive_and_keeps_only_the_payee(client):
+    r = post_qr(client, qr_png("upi://pay?pa=Shop.Owner@okhdfc&pn=Some%20Name&am=10&tn=secret%20note"))
+    assert r.status_code == 200, r.text
+    rep = client.get(f"/reports/{r.json()['report_id']}").json()
+    assert rep["subject_type"] == "qr" and rep["subject"] == "upi://pay?pa=shop.owner@okhdfc"
+    assert rep["classification"] == "inconclusive" and rep["classification_reason"].startswith("R4: a payment QR")
+    assert rep["indicators"] == [{"type": "upi_id", "value": "shop.owner@okhdfc", "normalized": "shop.owner@okhdfc"}]
+    assert "Some Name" not in json.dumps(rep) and "secret note" not in json.dumps(rep)
+    assert "receive money" in " ".join(rep["recommended_actions"])
+
+
+def test_upi_qr_rejects_missing_or_invalid_payee(client):
+    assert post_qr(client, qr_png("upi://pay?pn=NoPayee")).status_code == 422
+    assert post_qr(client, qr_png("upi://pay?pa=not-a-vpa")).status_code == 422
+
+
+def test_upi_payee_seen_in_two_suspicious_messages_becomes_suspicious_via_correlation(client):
+    for _ in range(2):
+        rid = client.post("/assess", json={"input": SCAM_SMS}).json()["report_id"]
+        assert client.get(f"/reports/{rid}").json()["classification"] in ("suspicious", "high_risk")
+    r = post_qr(client, qr_png("upi://pay?pa=scammer@oksbi&pn=X"))
+    rep = client.get(f"/reports/{r.json()['report_id']}").json()
+    assert [f["check_id"] for f in rep["findings"]] == ["CORR.PRIOR_REPORTS"]
+    assert rep["classification"] == "suspicious" and len(rep["related_report_ids"]) == 2
+    assert "scammer@oksbi" not in json.dumps(rep["findings"])
+    assert rep["recommended_actions"][0].startswith("Check that the payee")

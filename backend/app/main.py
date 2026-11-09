@@ -9,8 +9,10 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.ai.llm import LlmClient, default_llm
 from app.api.routes import router
@@ -44,8 +46,10 @@ def create_app(*, database: Database | None = None, llm: LlmClient | None = None
         api = ApiClient()
         cache = SqlIntelCache(db.sessionmaker)
         base = deps or Deps()
-        app.state.cm = AppState(db=db, api=api, cache=cache, chain=chain, llm=llm or (default_llm() if use_env_llm else None),
-                                deps=dataclasses.replace(base, api=base.api or api, cache=base.cache or cache))
+        the_llm = llm or (default_llm() if use_env_llm else None)
+        app.state.cm = AppState(db=db, api=api, cache=cache, chain=chain, llm=the_llm,
+                                deps=dataclasses.replace(base, api=base.api or api, cache=base.cache or cache,
+                                                         llm=base.llm or the_llm))
         task = None
         if background_feeds:
             try:  # download the OpenPhish feed on startup; fall back to the last file on failure
@@ -73,6 +77,15 @@ def create_app(*, database: Database | None = None, llm: LlmClient | None = None
     origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"], allow_headers=["*"])
     app.include_router(router)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
+        # FastAPI's default echoes the offending input back. That can be 20 kB of attacker text, and a lone
+        # surrogate in it makes the error response itself fail to encode (HTTP 500). Keep location and message only.
+        errors = [{"loc": [str(x) for x in e.get("loc", ())], "msg": str(e.get("msg", "invalid"))[:200],
+                   "type": str(e.get("type", "invalid"))} for e in exc.errors()[:10]]
+        return JSONResponse(status_code=422, content={"detail": errors})
+
     return app
 
 

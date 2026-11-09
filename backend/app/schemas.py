@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -245,6 +245,11 @@ class AssessRequest(Strict):
     subject_type: SubjectType | None = Field(default=None, description="Auto-detected if omitted")
     owns_site: bool = Field(default=False, description="User confirms they own the site: allows the exposed-file posture probe")
 
+    @field_validator("input")
+    @classmethod
+    def _strip_nul(cls, v: str) -> str:
+        return v.replace("\x00", "")  # Postgres text columns reject NUL, and it has no meaning in a link or message
+
 
 # ---------- canonical hashing (registry/canonical.py imports this) ----------
 
@@ -275,6 +280,8 @@ class Cluster(Strict):
     top_classification: RiskClass
     shared_indicators: list[ClusterIndicator]
     member_domains: list[str]
+    summary: str | None = Field(default=None, description="Two-sentence AI-written description; null when no LLM is configured")
+    summary_model: str | None = None
 
 
 # ---------- API responses ----------

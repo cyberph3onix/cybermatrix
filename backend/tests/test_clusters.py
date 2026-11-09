@@ -34,3 +34,19 @@ def test_shared_scam_domain_clusters_and_lists_member_domains():
     cs = build_clusters(rows(("r1", "domain", "kyc-verify-now.top", "high_risk"),
                              ("r2", "domain", "kyc-verify-now.top", "high_risk")), get_index())
     assert cs[0].member_domains == ["kyc-verify-now.top"] and "domain" in cs[0].label
+
+
+async def test_cluster_summaries_cached_validated_and_never_say_safe():
+    from app.ai.cluster_summary import add_summaries
+    from tests.test_message import FakeLlm
+    cs = build_clusters(rows(("r1", "domain", "kyc-verify-now.top", "high_risk"),
+                             ("r2", "domain", "kyc-verify-now.top", "high_risk")), get_index())
+    assert (await add_summaries(None, cs, {}))[0].summary is None
+    llm, cache = FakeLlm({"summary": "Two reports may point to one operator. Both involve kyc-verify-now.top."}), {}
+    out = await add_summaries(llm, cs, cache)
+    assert out[0].summary.startswith("Two reports") and out[0].summary_model == "claude-haiku-5-5"
+    await add_summaries(llm, cs, cache)
+    assert len(llm.calls) == 1  # second call served from the cache
+    assert "<untrusted_input>" in llm.calls[0][1] and "kyc-verify-now.top" in llm.calls[0][1]
+    for bad in ({"summary": "This domain is safe."}, {"nope": 1}, {"summary": "x" * 600}):
+        assert (await add_summaries(FakeLlm(bad), cs, {}))[0].summary is None
