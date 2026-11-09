@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { assess, assessQr, assessScreenshot } from "@/lib/api";
-import { detectSubjectType, SUBJECT_LABEL } from "@/lib/detect";
+import { detectSubjectType, looksLikeSecret, SUBJECT_LABEL } from "@/lib/detect";
 import type { OwnershipGrant } from "@/lib/types";
 import { OwnershipPanel } from "@/components/OwnershipPanel";
 
@@ -20,6 +20,7 @@ export default function Home() {
   const [shotConsent, setShotConsent] = useState(false);
 
   const detected = useMemo(() => (qr ? "qr" : detectSubjectType(text)), [qr, text]);
+  const secretWarning = useMemo(() => !qr && looksLikeSecret(text), [qr, text]);
   const showOwns = detected === "url" || detected === "domain";
   const showShot = detected === "url";
   const useShot = showShot && shot !== null && shotConsent;
@@ -77,6 +78,14 @@ export default function Home() {
           autoComplete="off"
           spellCheck={false}
         />
+
+        {secretWarning && (
+          <p role="alert" className="rounded-md border border-c-susp bg-c-susp-tint p-3 text-sm text-c-susp-ink">
+            This looks like it contains a password, PIN, private key or recovery phrase. We never need these, and
+            no genuine service will ask you for them. Remove it before you investigate, and change it if you
+            have already shared it with anyone.
+          </p>
+        )}
 
         <p className="min-h-12 text-sm text-muted" aria-live="polite">
           {detected ? (
