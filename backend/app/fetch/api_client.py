@@ -14,7 +14,7 @@ import httpx
 ALLOWED_HOSTS = frozenset({
     "api.certspotter.com", "crt.sh",
     "safebrowsing.googleapis.com", "urlhaus-api.abuse.ch", "www.virustotal.com",
-    "raw.githubusercontent.com", "data.iana.org", "dns.google",
+    "raw.githubusercontent.com", "data.iana.org", "dns.google", "api.osv.dev",
 })
 USER_AGENT = "CyberMatrix/0.1"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024  # the OpenPhish feed and IANA bootstrap are the largest legitimate bodies
@@ -90,6 +90,11 @@ class ApiClient:
                              extra_hosts: Iterable[str] = ()) -> Any:
         host = self._check_host(url, extra_hosts)
         r = await self._send("POST", url, host, data=data, headers=self._headers(None, headers_env))
+        return self._json(r, host)
+
+    async def post_json(self, url: str, payload: Any, *, extra_hosts: Iterable[str] = ()) -> Any:
+        host = self._check_host(url, extra_hosts)
+        r = await self._send("POST", url, host, json=payload, headers=self._headers(None, None))
         return self._json(r, host)
 
     @staticmethod

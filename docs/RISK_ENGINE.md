@@ -194,10 +194,26 @@ word of the brand appears in the registrable domain. The model extracts; code de
 ### Security posture (reported separately, 0 points)
 
 `POSTURE.NO_HSTS, POSTURE.NO_CSP, POSTURE.NO_XFO, POSTURE.NO_XCTO, POSTURE.MIXED_CONTENT, POSTURE.OLD_TLS_VERSION,
-POSTURE.SERVER_BANNER_VERSION, POSTURE.OUTDATED_SOFTWARE, POSTURE.NO_SPF, POSTURE.NO_DMARC, POSTURE.DMARC_NOT_ENFORCED, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
+POSTURE.SERVER_BANNER_VERSION, POSTURE.OUTDATED_SOFTWARE, POSTURE.KNOWN_VULNERABLE_COMPONENT, POSTURE.INSECURE_COOKIE,
+POSTURE.CORS_WILDCARD_CREDENTIALS, POSTURE.NO_HTTPS_REDIRECT, POSTURE.NO_SPF, POSTURE.NO_DMARC, POSTURE.DMARC_NOT_ENFORCED, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
 only for a site whose owner has proven control of the domain, see `app/ownership.py`).
 
 `POSTURE.OUTDATED_SOFTWARE` compares the `Server` / `X-Powered-By` version (nginx, Apache httpd, PHP, OpenSSL, Tomcat) with an end-of-life snapshot from endoflife.date (`data/eol_software.json`). Only a release line past end of life fires; an old patch level inside a supported line does not, because distributions backport fixes.
+
+`POSTURE.KNOWN_VULNERABLE_COMPONENT` reads exact `x.y.z` versions that the fetched page already exposes (script
+`src` file names and CDN paths for jQuery, jQuery UI, Bootstrap, AngularJS, Lodash, Moment, Vue, Handlebars; the
+`generator` meta for Drupal core) and looks each one up at `api.osv.dev` (`POST /v1/query`, through `api_client`;
+only package name and version are sent). Evidence lists the OSV/GHSA advisory IDs and CVEs. A missing or partial
+version (`Drupal 9`) gives no finding. OSV has no ecosystem for nginx, Apache httpd or WordPress core, so server
+banners are judged only by the end-of-life table above. If OSV is unreachable the posture run says so in `detail`.
+
+`POSTURE.INSECURE_COOKIE` (a `Set-Cookie` without Secure on HTTPS, HttpOnly or SameSite; names only, never values),
+`POSTURE.CORS_WILDCARD_CREDENTIALS` (`Access-Control-Allow-Origin: *` with `Allow-Credentials: true` on the page
+response) and `POSTURE.NO_HTTPS_REDIRECT` (an `http://` link served over HTTP with no redirect to HTTPS; we never make
+an extra request to test the http:// form of an https:// link) come from the same response.
+
+Every posture finding carries the issue (title), technical evidence, impact, severity (display hint),
+recommendation and a limitation (`tests/test_audit_posture.py` asserts this for every POSTURE ID).
 
 Posture checks run as group `posture.headers` (coverage weight 0, so they never change coverage or the score).
 The `severity` on a POSTURE finding is a display hint only (low for a missing defence, info for observations).

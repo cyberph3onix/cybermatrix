@@ -7,8 +7,13 @@ from app.checks import tls_chain as tc
 from app.checks.base import evidence, make_finding
 from app.engine import risk
 from app.engine.cert_verdict import certificate_verdict
-from tests.certgen import NOW, make_leaf
-from tests.test_tls_chain import CERTS, EMUDHRA_EV_G3B, load, pki, scan_of  # noqa: F401  (pki is a fixture)
+from tests.certgen import NOW, make_ca, make_leaf
+from tests.test_tls_chain import CERTS, EMUDHRA_EV_G3B, load, scan_of
+
+
+@pytest.fixture(scope="module")
+def pki():
+    return make_ca()
 
 
 def F(check_id):

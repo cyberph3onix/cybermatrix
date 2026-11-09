@@ -15,12 +15,15 @@ import re
 import time
 from datetime import date
 from functools import cache
+from typing import Any
 
 from selectolax.lexbor import LexborHTMLParser
 
 from app.brands import DATA_DIR
+from app.checks import osv
 from app.checks.base import AssessmentContext, CheckResult, evidence, make_finding, make_run
 from app.checks.tls_chain import _target
+from app.fetch.api_client import ApiUnavailable
 from app.fetch.safe_fetch import safe_fetch
 from app.schemas import CheckStatus, Finding
 from app.urlutil import URLParseError, parse_url
@@ -66,6 +69,7 @@ _OLD_TLS = ("SSLv2", "SSLv3", "TLSv1.0", "TLSv1.1")
 _SUBRESOURCES = (("script", "src"), ("link[rel~=stylesheet]", "href"), ("iframe", "src"), ("img", "src"),
                  ("audio", "src"), ("video", "src"), ("source", "src"), ("embed", "src"), ("object", "data"))
 MAX_LISTED = 5
+MAX_COOKIES = 30
 
 _HEADER_FINDINGS = (
     ("POSTURE.NO_HSTS", "strict-transport-security", "No HSTS header",
@@ -98,8 +102,22 @@ def mixed_content(body: bytes, base_url: str) -> list[str]:
     return found
 
 
+def cookie_problems(set_cookie: str, https: bool) -> list[dict[str, Any]]:
+    """[{name, missing: [Secure|HttpOnly|SameSite]}] per Set-Cookie line (one per line, see safe_fetch)."""
+    out = []
+    for line in set_cookie.splitlines()[:MAX_COOKIES]:
+        parts = [p.strip() for p in line.split(";")]
+        if not parts or "=" not in parts[0]:
+            continue
+        attrs = {p.split("=", 1)[0].strip().lower() for p in parts[1:]}
+        missing = [a for a, on in (("Secure", https), ("HttpOnly", True), ("SameSite", True)) if on and a.lower() not in attrs]
+        if missing:
+            out.append({"name": parts[0].split("=", 1)[0][:40], "missing": missing})
+    return out
+
+
 def analyze(headers: dict[str, str], final_url: str, body: bytes, content_type: str | None, tls_version: str | None,
-            now) -> list[Finding]:
+            now, submitted_url: str | None = None) -> list[Finding]:
     h = {k.lower(): v for k, v in headers.items()}
     try:
         https = parse_url(final_url).scheme == "https"
@@ -140,6 +158,44 @@ def analyze(headers: dict[str, str], final_url: str, body: bytes, content_type: 
             "Protocols older than TLS 1.2 have known weaknesses and are rejected by modern browsers.",
             "Enable TLS 1.2 and 1.3 and disable older versions.")
 
+    cookies = cookie_problems(h.get("set-cookie", ""), https)
+    if cookies:
+        c0 = cookies[0]
+        add("POSTURE.INSECURE_COOKIE", f"{len(cookies)} cookie(s) set without Secure / HttpOnly / SameSite",
+            f"Set-Cookie {c0['name']} is missing {', '.join(c0['missing'])}"
+            + (f" (and {len(cookies) - 1} more cookie(s))" if len(cookies) > 1 else ""),
+            {"cookies": cookies[:MAX_LISTED], "url": final_url},
+            "Without Secure a cookie can travel over plain HTTP; without HttpOnly page scripts (and XSS) can read it; "
+            "without SameSite it is sent on cross-site requests (CSRF).",
+            "Set Secure, HttpOnly and SameSite=Lax (or Strict) on session and authentication cookies.",
+            limitation=LIMITATION + " Cookie names are shown, never values. A cookie meant for scripts can "
+                       "legitimately lack HttpOnly.")
+
+    acao = h.get("access-control-allow-origin", "").strip()
+    if acao == "*" and h.get("access-control-allow-credentials", "").strip().lower() == "true":
+        add("POSTURE.CORS_WILDCARD_CREDENTIALS", "CORS allows any origin together with credentials",
+            "Access-Control-Allow-Origin: * with Access-Control-Allow-Credentials: true",
+            {"access-control-allow-origin": acao, "access-control-allow-credentials": "true", "url": final_url},
+            "This combination signals an intent to share authenticated responses with any website. Browsers refuse "
+            "the literal *, so servers configured this way often switch to reflecting the caller's Origin, which "
+            "does expose user data.",
+            "List the exact origins allowed to make credentialed requests; never use * or reflect Origin blindly.",
+            limitation=LIMITATION + " Observed on the page response only; API endpoints were not probed.")
+
+    if submitted_url and not https:
+        try:
+            submitted_http = parse_url(submitted_url).scheme == "http"
+        except URLParseError:
+            submitted_http = False
+        if submitted_http and body:
+            add("POSTURE.NO_HTTPS_REDIRECT", "Plain-HTTP address is not redirected to HTTPS",
+                f"{submitted_url} was served over HTTP ({final_url}) without a redirect to https://",
+                {"submitted": submitted_url, "final": final_url},
+                "Visitors who type the address or follow an old link stay on an unencrypted connection.",
+                "Redirect every http:// request to https:// (301) and enable HSTS.",
+                limitation=LIMITATION + " Only assessed when the submitted link was http://; we do not make an "
+                                        "extra request to test the http:// form of an https:// link.")
+
     for banner in ("server", "x-powered-by", "x-aspnet-version"):
         v = h.get(banner)
         if v and _VERSIONED.search(v):
@@ -158,6 +214,25 @@ def analyze(headers: dict[str, str], final_url: str, body: bytes, content_type: 
             f"Upgrade {name} to a supported release line.",
             limitation="Based on the version the server announces. Banners can be edited, and some Linux "
                        "distributions backport fixes to old versions, so this is not proof of a vulnerability.")
+    return out
+
+
+def vulnerable_components(hits, now) -> list[Finding]:
+    """POSTURE.KNOWN_VULNERABLE_COMPONENT per component with OSV advisories (osv.lookup output)."""
+    out = []
+    for c, adv in hits:
+        ids = [a["id"] for a in adv[:osv.MAX_IDS]]
+        cves = [a["cve"] for a in adv if a["cve"]][:osv.MAX_IDS]
+        out.append(make_finding(
+            "POSTURE.KNOWN_VULNERABLE_COMPONENT", f"{c.package} {c.version} has {len(adv)} published advisory(ies)",
+            [evidence("osv_advisory", f"{c.where} → OSV lists {', '.join(ids)}" + (" …" if len(adv) > len(ids) else ""),
+                      osv.SOURCE, {"ecosystem": c.ecosystem, "package": c.package, "version": c.version,
+                                   "advisories": ids, "cves": cves, "count": len(adv), "seen_in": c.where[:200]},
+                      observed_at=now)],
+            "Published vulnerabilities in a component the page loads may be exploitable against its visitors or the site.",
+            f"Upgrade {c.package} to a release without these advisories (see the advisory IDs for fixed versions).",
+            limitation=LIMITATION + " Matched on the version visible in the page. Whether a given advisory is "
+                                    "reachable depends on how the site uses the component; self-hosted copies may be patched."))
     return out
 
 
@@ -202,10 +277,17 @@ async def run(ctx: AssessmentContext) -> CheckResult:
                 tls_version = (await asyncio.wait_for(ctx.tls_scan(host, port), 35)).tls_version
             except Exception:  # noqa: BLE001
                 tls_version = None  # TLS posture just isn't assessed
-        findings = analyze(fr.headers, fr.final_url, fr.body, fr.content_type, tls_version, ctx.now)
+        findings = analyze(fr.headers, fr.final_url, fr.body, fr.content_type, tls_version, ctx.now,
+                           submitted_url=ctx.url.url_without_userinfo())
+        detail = None
+        if (fr.content_type or "").startswith("text/html"):
+            try:
+                findings += vulnerable_components(await osv.lookup(ctx, osv.detect(fr.body)), ctx.now)
+            except ApiUnavailable as e:
+                detail = f"osv.dev unavailable ({e}); known-vulnerability lookup skipped"
         if ctx.owns_site:
             fp = parse_url(fr.final_url)
             findings += await exposed_files(ctx, f"{fp.scheme}://{fp.host}" + (f":{fp.port}" if fp.explicit_port else ""))
-        return make_run(GROUP, CheckStatus.COMPLETED, SOURCE, t0), findings
+        return make_run(GROUP, CheckStatus.COMPLETED, SOURCE, t0, detail), findings
     except Exception as e:  # noqa: BLE001
         return make_run(GROUP, CheckStatus.FAILED, SOURCE, t0, f"error: {type(e).__name__}"), []

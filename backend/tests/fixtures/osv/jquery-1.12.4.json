@@ -1,0 +1,79 @@
+{
+ "vulns": [
+  {
+   "id": "GHSA-6c3j-c64m-qhgq",
+   "summary": "XSS in jQuery as used in Drupal, Backdrop CMS, and other products",
+   "aliases": [
+    "CVE-2019-11358",
+    "DRUPAL-CORE-2019-006",
+    "PYSEC-2026-628",
+    "SNYK-JS-JQUERY-174006"
+   ],
+   "modified": "2026-07-08T05:56:09.047237467Z",
+   "database_specific": {
+    "github_reviewed_at": "2019-04-26T16:28:41Z",
+    "nvd_published_at": "2019-04-20T00:29:00Z",
+    "cwe_ids": [
+     "CWE-1321",
+     "CWE-79"
+    ],
+    "severity": "MODERATE",
+    "github_reviewed": true
+   }
+  },
+  {
+   "id": "GHSA-gxr4-xjj5-5px2",
+   "summary": "Potential XSS vulnerability in jQuery",
+   "aliases": [
+    "BIT-drupal-2020-11022",
+    "CVE-2020-11022"
+   ],
+   "modified": "2026-09-10T03:48:45.850954196Z",
+   "database_specific": {
+    "nvd_published_at": "2020-04-29T22:15:00Z",
+    "cwe_ids": [
+     "CWE-79"
+    ],
+    "severity": "MODERATE",
+    "github_reviewed": true,
+    "github_reviewed_at": "2020-04-29T22:18:37Z"
+   }
+  },
+  {
+   "id": "GHSA-jpcq-cgw6-v4j6",
+   "summary": "Potential XSS vulnerability in jQuery",
+   "aliases": [
+    "BIT-drupal-2020-11023",
+    "CVE-2020-11023"
+   ],
+   "modified": "2026-09-10T03:48:45.809517754Z",
+   "database_specific": {
+    "cwe_ids": [
+     "CWE-79"
+    ],
+    "severity": "MODERATE",
+    "github_reviewed": true,
+    "github_reviewed_at": "2020-04-29T21:04:50Z",
+    "nvd_published_at": "2020-04-29T21:15:00Z"
+   }
+  },
+  {
+   "id": "GHSA-rmxg-73gg-4p98",
+   "summary": "Cross-Site Scripting (XSS) in jquery",
+   "aliases": [
+    "CVE-2015-9251"
+   ],
+   "modified": "2024-03-10T05:18:22.438189Z",
+   "database_specific": {
+    "cwe_ids": [
+     "CWE-79"
+    ],
+    "severity": "MODERATE",
+    "github_reviewed": true,
+    "github_reviewed_at": "2020-06-16T21:55:10Z",
+    "nvd_published_at": "2018-01-18T23:29:00Z"
+   }
+  }
+ ],
+ "_recorded": "2026-11-10 POST api.osv.dev/v1/query jquery@1.12.4 (npm)"
+}

@@ -76,6 +76,8 @@ POSTURE_IDS = frozenset({
     "POSTURE.NO_HSTS", "POSTURE.NO_CSP", "POSTURE.NO_XFO", "POSTURE.NO_XCTO", "POSTURE.MIXED_CONTENT",
     "POSTURE.OLD_TLS_VERSION", "POSTURE.SERVER_BANNER_VERSION", "POSTURE.EXPOSED_FILE",
     "POSTURE.NO_SPF", "POSTURE.NO_DMARC", "POSTURE.DMARC_NOT_ENFORCED", "POSTURE.OUTDATED_SOFTWARE",
+    "POSTURE.INSECURE_COOKIE", "POSTURE.CORS_WILDCARD_CREDENTIALS", "POSTURE.NO_HTTPS_REDIRECT",
+    "POSTURE.KNOWN_VULNERABLE_COMPONENT",
 })
 
 # Posture findings never score (RISK_ENGINE.md §2) and are reported in `security_posture`. Severity is only
@@ -93,5 +95,9 @@ POSTURE_META: dict[str, Meta] = {
     "POSTURE.NO_DMARC": Meta("security_posture", "low", "technical"),
     "POSTURE.DMARC_NOT_ENFORCED": Meta("security_posture", "info", "technical"),
     "POSTURE.OUTDATED_SOFTWARE": Meta("security_posture", "low", "technical"),
+    "POSTURE.INSECURE_COOKIE": Meta("security_posture", "low", "technical"),
+    "POSTURE.CORS_WILDCARD_CREDENTIALS": Meta("security_posture", "low", "technical"),
+    "POSTURE.NO_HTTPS_REDIRECT": Meta("security_posture", "low", "technical"),
+    "POSTURE.KNOWN_VULNERABLE_COMPONENT": Meta("security_posture", "medium", "technical"),
 }
 assert set(POSTURE_META) == POSTURE_IDS

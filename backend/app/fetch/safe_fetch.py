@@ -219,6 +219,8 @@ async def _send_hop(url: ParsedURL, *, verify: bool, method: str, body: bytes | 
                 if addr:
                     server_ip = str(addr[0])
             hdrs = {k.lower(): v for k, v in resp.headers.items()}
+            if "set-cookie" in hdrs:  # httpx joins repeats with ", ", which cookie Expires dates also contain
+                hdrs["set-cookie"] = "\n".join(resp.headers.get_list("set-cookie"))
             ctype = hdrs.get("content-type", "").split(";", 1)[0].strip().lower() or None
             if 300 <= resp.status_code < 400 and "location" in hdrs:
                 return _HopResponse(resp.status_code, hdrs, b"", server_ip, ctype)
