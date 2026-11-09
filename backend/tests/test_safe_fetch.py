@@ -66,6 +66,9 @@ def no_network(monkeypatch):
     "file:///etc/passwd",
     "gopher://example.com/",
     "ftp://example.com/",
+    "http://%31%32%37.0.0.1/",          # percent-encoded host decodes to 127.0.0.1
+    "http://%6c%6f%63%61%6c%68%6f%73%74/",  # ... and to localhost
+    "http://%31%36%39.254.169.254/latest/meta-data/",
 ])
 async def test_blocks_before_any_network(url, dns, no_network):
     dns["example.com"] = [PUBLIC]

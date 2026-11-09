@@ -11,7 +11,7 @@ import re
 import socket
 from dataclasses import dataclass
 from functools import cache
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 import idna
 import tldextract
@@ -111,6 +111,9 @@ def to_unicode_host(host: str) -> str:
     return ".".join(out)
 
 
+_FORBIDDEN_HOST = re.compile(r"[\x00-\x20#%/:<>?@\[\\\]^|]")
+
+
 def parse_url(raw: str, *, default_scheme: str = "https") -> ParsedURL:
     s = raw.strip()
     if not s:
@@ -148,6 +151,13 @@ def parse_url(raw: str, *, default_scheme: str = "https") -> ParsedURL:
             port, explicit_port = _port(p), True
     if not host:
         raise URLParseError("missing host")
+    if "%" in host:  # browsers percent-decode the host (WHATWG host parser): %73bi.co.in is sbi.co.in
+        try:
+            host = unquote(host, errors="strict")
+        except UnicodeDecodeError:
+            raise URLParseError("host is not valid percent-encoded UTF-8") from None
+        if not host or _FORBIDDEN_HOST.search(host):
+            raise URLParseError("host contains forbidden characters")
     ip = parse_ip_literal(host)
     host_norm = str(ip.ip) if ip and not ip.non_canonical else to_ascii_host(host)
     if port is None:

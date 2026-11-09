@@ -116,3 +116,25 @@ async def test_benign_real_format_messages_not_flagged(name, text):
     assert not ids & {"MSG.PAYMENT_REQUEST", "MSG.REMOTE_ACCESS_REQUEST", "MSG.INVESTMENT_LURE", "MSG.SCAM_PATTERN"}
     rep = await assess_message(text, deps=Deps(checks=[]))
     assert rep.classification in ("low_risk", "inconclusive"), (name, rep.classification_reason)
+
+
+# ---------- M1-9: the brief's example targets, one lookalike each ----------
+
+SECTOR_LOOKALIKES = [
+    ("bank", "https://sbi-yono-kyc.top/login"),
+    ("payment gateway", "https://paytm-kyc-update.xyz/verify"),
+    ("university admission / exam portal", "https://wbjee-admission-portal.in/result"),
+    ("university (IEM)", "https://iem-admission-fee.top/pay"),
+    ("government / tax", "https://incometax-refund-status.top/claim"),
+    ("parcel delivery (India Post)", "https://indiapost-redelivery.xyz/track"),
+    ("job portal", "https://naukri-hr-offer.top/apply"),
+    ("social login", "https://accounts.google.com.signin-verify.top/"),
+    ("customer support / account recovery", "https://microsoft-account-recovery.top/support"),
+]
+
+
+@pytest.mark.parametrize("sector,url", SECTOR_LOOKALIKES, ids=[s for s, _ in SECTOR_LOOKALIKES])
+def test_each_brief_sector_lookalike_is_flagged(sector, url):
+    from tests.test_url_checks import ids as url_ids
+    got = url_ids(url)
+    assert got & {"URL.LOOKALIKE.TYPOSQUAT", "URL.LOOKALIKE.HOMOGLYPH", "URL.BRAND_IN_SUBDOMAIN"}, (sector, got)
