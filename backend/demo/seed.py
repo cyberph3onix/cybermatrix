@@ -45,8 +45,14 @@ PAYPAL_A = "https://paypa1-secure-login.xyz/signin"
 PAYPAL_B = "https://paypa1-verify-account.top/webapps/auth"
 EMUDHRA_SITE = "https://esign-verify.in/"
 LEGIT = "https://www.sbi.co.in/"
+LEGIT_GOV = "https://www.incometax.gov.in/iec/foportal/"
+SHORT = "https://bit.ly/3demoAmz"
+SHORT_DEST = "https://www.amazon.in/dp/B0DEMO1234"
 SMS = ("PayPal alert: your account is limited. Confirm now or it will be closed within 24 hours. Enter your card "
        f"number and the OTP sent to you at {PAYPAL_A}")
+# A real-shaped, legitimate bank OTP: urgent wording and a code, but no link and no request to share anything.
+LEGIT_SMS = ("123456 is your OTP for a transaction of Rs. 1,250.00 at AMAZON on your HDFC Bank card ending 4321. "
+             "Valid for 5 minutes. Do not share this OTP with anyone. - HDFC Bank")
 
 
 def page_bytes(name: str) -> bytes:
@@ -58,18 +64,27 @@ PAGES = {
     "paypa1-verify-account.top": page_bytes("fake_paypal_login.html"),
     "esign-verify.in": page_bytes("legit_login.html"),
     "www.sbi.co.in": page_bytes("news_article.html"),
+    "www.incometax.gov.in": page_bytes("incometax_login.html"),
+    "www.amazon.in": page_bytes("amazon_product.html"),
 }
+REDIRECTS = {SHORT: SHORT_DEST}  # recorded 301 from the shortener
 
 
 IPS = {"paypa1-secure-login.xyz": "203.0.113.10", "paypa1-verify-account.top": "203.0.113.10",  # same cheap host
-       "esign-verify.in": "198.51.100.20", "www.sbi.co.in": "192.0.2.30"}
+       "esign-verify.in": "198.51.100.20", "www.sbi.co.in": "192.0.2.30", "www.incometax.gov.in": "192.0.2.40",
+       "bit.ly": "192.0.2.50", "www.amazon.in": "192.0.2.60"}
 
 
 async def fetcher(url: str) -> FetchResult:
-    host = parse_url(url).host
-    return FetchResult(requested_url=url, final_url=url, status=200, headers={"content-type": "text/html"},
-                       content_type="text/html", body=PAGES[host],
-                       hops=[RedirectHop(url=url, status_code=200, resolved_ip=IPS[host])])
+    hops: list[RedirectHop] = []
+    final = url
+    while final in REDIRECTS:
+        hops.append(RedirectHop(url=final, status_code=301, resolved_ip=IPS[parse_url(final).host]))
+        final = REDIRECTS[final]
+    host = parse_url(final).host
+    hops.append(RedirectHop(url=final, status_code=200, resolved_ip=IPS[host]))
+    return FetchResult(requested_url=url, final_url=final, status=200, headers={"content-type": "text/html"},
+                       content_type="text/html", body=PAGES[host], hops=hops)
 
 
 def make_tls(now):
@@ -80,10 +95,13 @@ def make_tls(now):
                           san=["paypa1-secure-login.xyz", "paypa1-verify-account.top"],
                           nb=now - timedelta(days=2), na=now + timedelta(days=88))
     legit, _ = make_leaf(ca, ca_key, host="www.sbi.co.in", nb=now - timedelta(days=200), na=now + timedelta(days=165))
+    gov, _ = make_leaf(ca, ca_key, host="www.incometax.gov.in", nb=now - timedelta(days=120), na=now + timedelta(days=245))
+    amz, _ = make_leaf(ca, ca_key, host="www.amazon.in", nb=now - timedelta(days=60), na=now + timedelta(days=300))
     em_leaf, _ = make_leaf(ca, ca_key, host="esign-verify.in", nb=now - timedelta(days=20), na=now + timedelta(days=70))
     emudhra = x509.load_pem_x509_certificates(EMUDHRA_EV.read_bytes())[0]
     chains = {"paypa1-secure-login.xyz": ([shared, ca], True), "paypa1-verify-account.top": ([shared, ca], True),
-              "esign-verify.in": ([em_leaf, emudhra], False), "www.sbi.co.in": ([legit, ca], True)}
+              "esign-verify.in": ([em_leaf, emudhra], False), "www.sbi.co.in": ([legit, ca], True),
+              "www.incometax.gov.in": ([gov, ca], True), "www.amazon.in": ([amz, ca], True)}
 
     async def scan(host: str, port: int) -> TlsScan:
         chain, trusted = chains[host]
@@ -149,8 +167,9 @@ async def main(database_url: str) -> None:
     await db.create_all()
     rows: list[AssessmentReport] = []
     try:
-        for url in (PAYPAL_A, PAYPAL_B, EMUDHRA_SITE, LEGIT):
+        for url in (PAYPAL_A, PAYPAL_B, EMUDHRA_SITE, LEGIT, LEGIT_GOV, SHORT):
             rows.append(await assess_url(url, deps=deps, now=now))
+        rows.append(await assess_message(LEGIT_SMS, deps=deps, llm=None))
         # the message goes last so its link correlates with the stored PayPal clones
         rows.append(await assess_message(SMS, deps=deps, llm=None))
         for i, r in enumerate(rows):

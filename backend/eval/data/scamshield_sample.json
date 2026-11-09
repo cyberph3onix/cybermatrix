@@ -1,0 +1,391 @@
+{
+ "source": "haxrits/ScamShield-IN on Hugging Face (licence: openrail), sample hand-verified 2026-11-09; hw-* are hand-written legitimate notices in real formats, because the corpus has no modern bank alerts",
+ "excluded": "Rows whose label looked wrong on reading (e.g. legit-labelled \"free gift, pay Rs499 handling\" offers; fraud-labelled plain promos) were not sampled",
+ "messages": [
+  {
+   "id": "ss-fraud-0",
+   "label": "fraud",
+   "fraud_type": "OTP Phishing",
+   "message": "Ur SIM will be blocked in 2hrs due to suspicious activity.SMS OTP 7711 to 9123456789 to stop blocking",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-9",
+   "label": "fraud",
+   "fraud_type": "OTP Phishing",
+   "message": "A/c debited Rs49,990 at AMAZON.Not done by u? SMS OTP 552189 to 9988112233 to block txn immediately",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-13",
+   "label": "fraud",
+   "fraud_type": "OTP Phishing",
+   "message": "ALERT! Suspicious login frm new device.Share OTP sent to ur no to verify & secure A/c immly",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-20",
+   "label": "fraud",
+   "fraud_type": "OTP Phishing",
+   "message": "Aapka OTP 778215 hai jo abhi expire ho raha hai. Customer care ko turant batayein verification ke liye: 9876543210",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-1",
+   "label": "fraud",
+   "fraud_type": "UPI Request Scam",
+   "message": "Your electricity bill is due. Pay Rs 1450 immediately to avoid disconnection tonight: upi-billpay.live",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-10",
+   "label": "fraud",
+   "fraud_type": "UPI Request Scam",
+   "message": "Payment request Rs2000 recd frm unknown.Approve at gpay-approve-link.in to receive amt in your A/c",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-23",
+   "label": "fraud",
+   "fraud_type": "UPI Request Scam",
+   "message": "Electricity Bill Pending Rs1,420.Connection will be cut tonight 9:30pm.Pay immediately upi-quickpay.org/pay",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-2",
+   "label": "fraud",
+   "fraud_type": "Generic Promo Fraud",
+   "message": "WINNER!9933779179 is chosen for $2500 CASH prize, call +38977148613 now",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-4",
+   "label": "fraud",
+   "fraud_type": "Lottery/Prize Scam",
+   "message": "Congratulations! You have won Rs 25,00,000 in KBC Lucky Draw 2026. Claim now: kbc-lottery-claim.com",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-17",
+   "label": "fraud",
+   "fraud_type": "Lottery/Prize Scam",
+   "message": "WINNER!Ur sim card won Rs15,00,000 in Airtel 25th Anniv Draw.Call +918800XXXXXX to claim,Processing fee Rs500 applicable",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-37",
+   "label": "fraud",
+   "fraud_type": "Lottery/Prize Scam",
+   "message": "Congrats!Ur no won Rs25,00,000 in SBI Anniversary Lucky Draw.Claim at sbi-luckydraw-claim.in,Share bank details to receive prize",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-46",
+   "label": "fraud",
+   "fraud_type": "Lottery/Prize Scam",
+   "message": "Jio Recharge Lucky Winner! Aap jeet chuke hain 10000 cashback. Apna UPI PIN enter karein yahan: jio-reward.xyz",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-12",
+   "label": "fraud",
+   "fraud_type": "KYC Scam",
+   "message": "URGENT: Your HDFC A/c No XXXX2210 will be deactivated in 2hrs.KYC Pending.Click hdfcbank-ekyc.in to avoid block.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-36",
+   "label": "fraud",
+   "fraud_type": "KYC Scam",
+   "message": "RBI Notice:Bank A/c frozen due to incomplete KYC as per new RBI guideline.Update PAN/Aadhaar at rbi-kyc-update.org within 24hrs",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-39",
+   "label": "fraud",
+   "fraud_type": "KYC Scam",
+   "message": "Dear Customer, your SBI KYC will expire today. Update immediately to avoid account block: bit.ly/sbi-kyc23",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-63",
+   "label": "fraud",
+   "fraud_type": "KYC Scam",
+   "message": "Aapka HDFC Bank account 24 ghante mein block ho jayega. Turant KYC update karein: hdfc-verify.in/update",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-16",
+   "label": "fraud",
+   "fraud_type": "Investment Scam",
+   "message": "Aapka demat account SEBI registered advisor ke through 3x return de raha hai. Minimum investment Rs 10000 abhi karein",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-34",
+   "label": "fraud",
+   "fraud_type": "Investment Scam",
+   "message": "Invest Rs 5000 in our crypto trading bot, guaranteed daily profit 10%. Join Telegram group: t.me/cryptoindia2026",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-28",
+   "label": "fraud",
+   "fraud_type": "Loan Scam",
+   "message": "Aapko pre-approved personal loan Rs 5,00,000 mil sakta hai 0% interest par. Apply now: quickloan-india.net",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-51",
+   "label": "fraud",
+   "fraud_type": "Loan Scam",
+   "message": "Loan Approved Rs2Lakh!Pay processing fee Rs1500 to activate disbursement,UPI:loanfee123@oksbi",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-58",
+   "label": "fraud",
+   "fraud_type": "Loan Scam",
+   "message": "Instant loan up to 2 lakh bina documents ke. Sirf Aadhaar number bhejein WhatsApp pe: +91XXXXXXXXXX",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-55",
+   "label": "fraud",
+   "fraud_type": "Insurance Scam",
+   "message": "Ur Health Insurance Claim Rs85,000 Approved!Share A/c & IFSC to process refund within 24hrs",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-33",
+   "label": "fraud",
+   "fraud_type": "Fake Police/Court Notice",
+   "message": "Court Warrant Issued against you Sec 420.Pay settlement Rs24,500 today to avoid arrest courtfee-pay.in",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-40",
+   "label": "fraud",
+   "fraud_type": "Fake Police/Court Notice",
+   "message": "CYBER CRIME CELL: Your Aadhaar linked to illegal parcel seized at Mumbai Customs.Call 9876512340 immediately to avoid digital arrest",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-fraud-42",
+   "label": "fraud",
+   "fraud_type": "Job Scam",
+   "message": "Selected for Flipkart Part Time Job Rs18000/month.Pay Rs500 verification charge to confirm joining,Call 8800223344",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-3",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "RC31 STD Pack now comes with all STD calls@ 40p per min with Rs 11 Talktime. Tariff Validity 30days,  Talktime Validty 3days.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-5",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Reliance 2G datacard in 1500/-speed upto   3.1mbps, Unlimited downloading plan   available & 3G datacard in 2500/-speed upto   7.2 mbps pls call-8826000951",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-6",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Make your friends dance when they call you. Dial 51000 at Re.1/min, select your favourite song as your DialerTune for only Rs. 30/month. FREE song Download.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-10",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Indian railways servers are very busy. Please try after some time.Tip: get weather forecast; send HELP WEATHER to learn more.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-13",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Original Booking Gurgaon Commercial Space at Prime location ANSAL-Sec-83 84m wide Road Rate- Rs4545 PSF onwards Golden Investment SMS GENREC to 53030",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-18",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Navratra Special Launching 9th oct. CHD presnts Phase-3 of Avenue71,  Shona Road,  Gurgaon *@Rs.4150/- Lease Rs.400/- as Inaugural discount Sms ICD to 54999",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-23",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "I am writing this since I am not getting connection to ur mobile. I am sending the complete form for the migration certificate. I have enclosed two DDs 200/- and 1000/- Use 200 to get me migration and transfer certificate and the other is mostly for expenses incurred for various things you helped me in. I am sending two blank papers signed with my name. They will send migration certificate directly to my institute but plz try for my transfer certificate.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-29",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Orientation in BBD-Lucknow is on 8-Jun-10.Kindly send ur final payment by 5th June 2010.Ignore if already paid.In case of query call Ms Sharmeen 09312889010.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-37",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Now Book Round Trip Air Tickets at www.EaseMytrip.in and Save Upto Rs.3000/-  Click on LCC RoundTrip Fares on Search Box For Best Price www.EaseMyTrip.in",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-39",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "I dnt hav d final srs. I have mailed u d use case diagram in a word doc",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-44",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "With 3G enjoy fast internet, video calling & video entertainment! Send 3G to 121 or recharge with Rs99 & get 100MB data free, thereafter charges-30p/20Kb apply.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-45",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Reminder:Vodafone bill of Rs399 due 25th.Pay via MyVi App to avoid late fee.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-49",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Rs 165 for Unlimited Biryani @ Pure Punjabi / 83% off Strength Gym & Spa/ Rs 50 for 2 gift vouchers worth Rs 500 on Tradus.in. Visit www.snapdeal.com",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-54",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Present your child the enjoyment of Kids' Paradise at Rs 60 only (70% off). To get the deal,  visit www.snapdeal.com",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-56",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Recharge Rs75 & get Full Talk Time of Rs75 with Unlimited validity .Recharge Now & Stay Connected with AIRCEL.T&C Apply.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-61",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "New STD Pack 249. Rs249 se recharge karein aur payein 500 STD minutes,  validity 30 din. Check balance minutes at *123*8#.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-63",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Recharge with Rs47 and get 500 Local/National SMS/day for 30 days",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-65",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Rs444 ka Full talktime Rs444 ke recharge pe! Talktime validity-30din,  sabhi calls ke liye manya. Balance ke liye call keejiye *123*5#(muft). Offer 15-Jan-10 tak",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-66",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Rs 3101 off on latest 12.2 MP Kodak Digital Camera with 3X optical zoom. Sleek n Compact design,  available in 3 attractive colours-Red,  Black n White. Also get assured MYSTERY GIFTworth Rs5000.Offer open only to respondents of this message. For details sms SCAD to 52424.TnC apply",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-68",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "MusstBuy-For Rs600 enjoy a Haircut,  Facial,  Bleach,  waxing etc worth Rs1200 @ Trends Salon,  Frazer Town Valid-7Mar-6Apr. T&C Reply A to get code NOW. Chrgs Rs10",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-31",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Last year some Frankfinnians started with a salary of Rs 1.26 lacs pm. This year it could be U. For details,  SMS FFN to 5616111",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-59",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "National School of Business,  Bangalore. Register yourself for telephonic interview before 15th Sep. Limited seats available for Sep batch. Contact 09900087759",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-21",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Required CALLERS PROCESS: 1.Inbound: Good Comp Skills-40 2.Sales: Min 6mth Exp-90 in Kirti Ngr,  Nr Metro Station SALARY: 5-6K +Incentive Call: 9899212515",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-38",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Not satisfied with ur existing bulk sms provider. Buy SMS service as low as 2 paisa/sms from SMSC visit www.SmscGateway.in - Resellers Invited.",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "ss-legit-46",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "MCSE,  CCNA,  CCNP,  Linux,  Lotus Domino,  Sun Solaris,  others Quality training available with moneyback guarantee*. Ph:011-41646262,  24641080 www.netlabsits.com",
+   "source": "ScamShield-IN"
+  },
+  {
+   "id": "hw-legit-0",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "482913 is the OTP for your transaction of INR 2,499.00 at FLIPKART on ICICI Bank Credit Card XX4410. Valid for 10 mins. Do not share this OTP with anyone for security reasons.",
+   "source": "hand-written (real format)"
+  },
+  {
+   "id": "hw-legit-1",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Rs.1,200.00 debited from A/c XX7781 on 08-11-26 to VPA swiggy@icici (UPI Ref 631245789012). Not you? Call 18002586161 - SBI",
+   "source": "hand-written (real format)"
+  },
+  {
+   "id": "hw-legit-2",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Dear Customer, INR 15,000.00 credited to your A/c XX2210 on 08-Nov-26 by NEFT. Avl Bal INR 42,118.50 - HDFC Bank",
+   "source": "hand-written (real format)"
+  },
+  {
+   "id": "hw-legit-3",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Your Amazon.in order #403-1234567-1234567 for Wireless Mouse has been delivered. Track or return at amazon.in/your-orders",
+   "source": "hand-written (real format)"
+  },
+  {
+   "id": "hw-legit-4",
+   "label": "legit",
+   "fraud_type": null,
+   "message": "Electricity bill of Rs 1,450 for CA No 1002345 is due on 15-11-2026. Pay via the official app or website. Ignore if paid. - BESCOM",
+   "source": "hand-written (real format)"
+  }
+ ]
+}

@@ -140,7 +140,8 @@ def osa_distance(a: str, b: str) -> int:
 
 
 def _max_distance(brand_label: str) -> int:
-    return 1 if len(brand_label) < 8 else 2
+    # Two edits on an 8-letter label is a quarter of it changed: oneindia.in sat 2 edits from "pnbindia".
+    return 1 if len(brand_label) <= 8 else 2
 
 
 def _affixed(label: str, brand_label: str) -> bool:

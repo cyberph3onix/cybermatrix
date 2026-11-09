@@ -132,12 +132,16 @@ Confidence:
 | MSG.CREDENTIAL_REQUEST | social_engineering | medium | heuristic | Asks for OTP/password/PIN/CVV/seed phrase (regex + LLM) |
 | MSG.PAYMENT_REQUEST | social_engineering | medium | heuristic | Asks to pay, scan a QR, or "receive money" via UPI |
 | MSG.URGENCY | social_engineering | low | heuristic | Deadline, threat of block/suspension |
-| MSG.AUTHORITY_IMPERSONATION | social_engineering | low | heuristic | Claims to be a bank/gov/university/company |
+| MSG.AUTHORITY_IMPERSONATION | social_engineering | low | heuristic | Claims to be a bank/gov/university/company, or police/court/RBI/cyber cell |
 | MSG.REWARD_LURE | social_engineering | low | heuristic | Prize, cashback, refund, job offer with fee |
+| MSG.SCAM_PATTERN | social_engineering | medium | heuristic | Two different pressure tactics (urgency, authority, reward; a prize/guaranteed-return offer counts as two) **and** a way to act on them (link, phone, UPI ID, email, payment/credential request, "reply YES") |
 | MSG.SENDER_DOMAIN_MISMATCH | impersonation | high | technical | Email From/Reply-To domain doesn't match the claimed organisation's official domain (headers present) |
 | MSG.LINK_TEXT_MISMATCH | phishing | high | technical | Displayed link text domain ≠ actual href domain |
 
 Extracted URLs run through the full URL pipeline, and their findings are attached with an `indicator` reference.
+Bare domains with no scheme ("update KYC at hdfc-verify.in") count as links when they are lowercase and end in a real
+public suffix. A credential or payment phrase straight after a negation ("do not share this OTP") is not a request.
+Signal regexes run on redacted text with the placeholders blanked, so a masked number never reads as "OTP".
 
 ### Correlation
 

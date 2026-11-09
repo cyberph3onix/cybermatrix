@@ -3,7 +3,7 @@
 ## Automated (offline, no keys needed)
 
 ```bash
-cd backend && uv run pytest -q          # 441 tests, ~6 s; live tests are deselected by default
+cd backend && uv run pytest -q          # 463 tests, ~7 s; live tests are deselected by default
 cd backend && uv run ruff check app tests demo
 cd contracts && forge test -vv          # 46 tests, 100% branch coverage
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
@@ -47,9 +47,66 @@ cd backend && DATABASE_URL=postgresql+asyncpg://cybermatrix:cybermatrix@localhos
 | `paypa1-verify-account.top` | Suspicious: same certificate as the first, so it clusters; graded, not all-or-nothing |
 | `esign-verify.in` | Confirmed malicious by `TLS.DISTRUSTED_CA`: the real eMudhra intermediate (public certificate; nothing is ever signed with its key) |
 | `www.sbi.co.in` | Low risk with 90% coverage and a full limitations list: the best a result can be |
+| `www.incometax.gov.in` | Low risk: a real-brand login page on the official domain is not flagged |
+| `bit.ly/…` → `www.amazon.in` | Low risk: the shortener is expanded and the destination checked |
+| Genuine HDFC OTP SMS | Not flagged: "do not share this OTP" is a warning, not a request |
 | Scam SMS linking to the first | Message path: redaction, language signals, link assessed through the URL pipeline |
 
 Each report says in its limitations that the data is recorded. `tests/test_demo_seed.py` keeps this story from rotting.
+
+## Testing report: observed results
+
+### URLs and messages (demo seed, real pipeline, recorded network data)
+
+Produced by `python -m demo.seed`; `tests/test_demo_seed.py` asserts every row below.
+
+| Case | Expected | Observed | Coverage | Confidence | Check IDs that fired |
+|---|---|---|---|---|---|
+| `paypa1-secure-login.xyz/signin` (fake PayPal login, listed by Safe Browsing) | malicious | `confirmed_malicious` (R1) | 90% | high | URL.INTEL.GSB, URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, TLS.CERT_VERY_NEW, DOMAIN.SUSPICIOUS_TLD, URL.KEYWORDS |
+| `paypa1-verify-account.top` (same kit, not yet listed) | suspicious or worse | `suspicious` (R3) | 90% | high | URL.LOOKALIKE.TYPOSQUAT, PAGE.CREDENTIAL_FORM, DOMAIN.YOUNG, CORR.SHARED_INFRA, TLS.CERT_VERY_NEW, … |
+| `esign-verify.in` (chain through the real eMudhra EM EV TLS CA - G3B) | malicious | `confirmed_malicious` (R1) | 90% | high | TLS.DISTRUSTED_CA, TLS.UNTRUSTED_ROOT, TLS.INCOMPLETE_CHAIN, URL.KEYWORDS |
+| Scam SMS: "PayPal alert… card number and the OTP… <link>" | malicious | `confirmed_malicious` (R1 via its link) | 65% | medium | URL.INTEL.GSB (link), MSG.CREDENTIAL_REQUEST, MSG.SCAM_PATTERN, MSG.URGENCY, … |
+| `www.sbi.co.in` (bank, page mentions logins) | not flagged | `low_risk` (R5) | 90% | high | none |
+| `www.incometax.gov.in` (real-brand login page on the official domain) | not flagged | `low_risk` (R5) | 90% | high | none |
+| `bit.ly/…` → `www.amazon.in` (shortener to an allowlisted shop) | not flagged | `low_risk` (R5) | 90% | high | URL.SHORTENER (low) |
+| Genuine HDFC OTP SMS ("…Do not share this OTP with anyone") | not flagged | `inconclusive` (R4: AI step off in the seed) | 40% | low | MSG.AUTHORITY_IMPERSONATION (low) |
+
+The real OTP SMS used to come out `suspicious` because "Do not share this OTP" matched as a request for it. Negated
+phrases no longer count (`tests/test_message.py::test_safety_warning_is_not_a_credential_request`).
+
+### Message analysis on ScamShield-IN
+
+`uv run python -m eval.scamshield` (deterministic checks only, offline; links get the structure and lookalike
+checks). "Flagged" = `suspicious` or worse; a legitimate message that is `low_risk` or `inconclusive` is not flagged.
+
+**Sample (55 messages, hand-verified):** 25 fraud and 25 legit from ScamShield-IN (openrail), plus 5 legitimate bank,
+shop and utility notices written in real formats, because the corpus has no modern bank alerts. Rows whose label looked
+wrong on reading were not sampled. Result: 25/25 fraud flagged, 0/30 legit flagged. **This sample was used to tune the
+rules, so it is a regression test (`test_eval_sample_stays_accurate`), not a measure of accuracy.**
+
+**Held-out (every other labelled row, 528 messages, never read while tuning):**
+`uv run python -m eval.scamshield --corpus sms_fraud_classification.json`
+
+| Fraud type | Flagged |
+|---|---|
+| KYC scam | 7/7 |
+| OTP phishing | 4/4 |
+| UPI request scam | 5/5 |
+| Fake police/court notice | 5/5 |
+| Lottery/prize | 3/3 |
+| Job scam | 3/3 |
+| Loan scam | 2/2 |
+| Investment scam | 4/5 |
+| Insurance scam | 3/4 |
+| **All specific scam types** | **36/38 (95%)** |
+| "Generic Promo Fraud" | 4/66 |
+
+Legitimate messages flagged: **9/424 (2.1%)**. Most of those are "free gift, just pay ₹399 delivery charges" offers that
+we would call scams too, plus one private-IP link (`URL.IP_HOST`).
+
+"Generic Promo Fraud" is mostly ordinary 2010 marketing (property ads, quizzes, even an anti-fraud tip) and we do not
+try to flag it. The two missed scams use one tactic and a link ("car insurance expired, renew now: <domain>"). The LLM
+language signals (`--llm`) are meant to catch those. Wording alone never goes above `suspicious` (heuristic cap).
 
 ## On-chain
 

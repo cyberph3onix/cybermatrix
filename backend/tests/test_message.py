@@ -177,3 +177,44 @@ def test_safe_filter_allows_product_name_but_not_verdict():
     from app.ai.explain import _PRODUCT, _SAFE
     assert not _SAFE.search(_PRODUCT.sub("", "Google Safe Browsing lists this link."))
     assert _SAFE.search(_PRODUCT.sub("", "Google Safe Browsing lists it, but the site is safe."))
+
+
+def test_safety_warning_is_not_a_credential_request():
+    """A bank's "do not share this OTP" must not read as a request for it (false positive on every real OTP SMS)."""
+    from app.checks.message import SIGNALS, _first_match
+    rx = SIGNALS["MSG.CREDENTIAL_REQUEST"][0]
+    assert _first_match("MSG.CREDENTIAL_REQUEST", rx, "123456 is your OTP. Do not share this OTP with anyone.") is None
+    assert _first_match("MSG.CREDENTIAL_REQUEST", rx, "Never share your PIN or password.") is None
+    assert _first_match("MSG.CREDENTIAL_REQUEST", rx, "Please share your OTP to verify.") is not None
+    # a negated phrase does not hide a real request later in the same message
+    m = _first_match("MSG.CREDENTIAL_REQUEST", rx, "NEVER tell anyone your password; reply with OTP to cancel")
+    assert m is not None and "reply with OTP" in m.group(0)
+
+
+def _ids(text):
+    return {f.check_id for f in message.regex_signals(text, get_index())}
+
+
+def test_redaction_placeholder_is_not_an_otp():
+    # "5616111" is masked as [OTP]; the placeholder must not read as a request for an OTP
+    assert "MSG.CREDENTIAL_REQUEST" not in _ids("For details, SMS FFN to 5616111")
+
+
+def test_bare_domain_is_extracted_but_sentence_joins_are_not():
+    ex = message.extract("Your KYC is pending. Click hdfcbank-ekyc.in to avoid block.Not you? call us")
+    assert ex.urls == ["hdfcbank-ekyc.in"]
+    assert message.extract("A/c debited at AMAZON.Not done by u? See report.pdf").urls == []
+
+
+def test_scam_pattern_needs_two_tactics_and_a_channel():
+    assert "MSG.SCAM_PATTERN" in _ids("URGENT: your SBI account will be blocked today. Update at sbi-help.xyz")
+    assert "MSG.SCAM_PATTERN" in _ids("Congratulations! You have won Rs 25,00,000. Claim now: kbc-claim.com")
+    assert "MSG.SCAM_PATTERN" not in _ids("URGENT: your SBI account will be blocked today.")  # no way to act
+    assert "MSG.SCAM_PATTERN" not in _ids("Reply within 24 hrs to get a career tip.")  # one tactic
+
+
+async def test_eval_sample_stays_accurate():
+    """The hand-verified 55-message sample (docs/TESTING.md). Deterministic checks only, offline."""
+    from eval.scamshield import evaluate, summary
+    s = summary(await evaluate())
+    assert s["tp"] >= 23 and s["fp"] <= 1, s
