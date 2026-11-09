@@ -12,6 +12,7 @@ import { FindingGroups } from "@/components/FindingGroups";
 import { InvestigationTrace } from "@/components/InvestigationTrace";
 import { RedirectTimeline } from "@/components/RedirectTimeline";
 import { Provenance } from "@/components/Provenance";
+import { INDICATOR_LABEL } from "@/lib/classes";
 import { RegisterButton } from "@/components/RegisterButton";
 import { Section } from "@/components/Section";
 
@@ -98,6 +99,25 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
           <StrengthLegend />
         </div>
         <FindingGroups findings={report.findings} />
+      </Section>
+
+      <Section
+        id="indicators"
+        title={`Indicators (${report.indicators.length})`}
+        intro="What this report observed: the values used to link it with other reports and threat intelligence."
+      >
+        {report.indicators.length === 0 ? (
+          <p className="text-sm text-muted">No indicators were extracted.</p>
+        ) : (
+          <ul className="divide-y divide-rule rounded-md border border-rule bg-panel text-sm">
+            {report.indicators.map((i) => (
+              <li key={i.type + i.normalized} className="flex flex-wrap items-baseline gap-x-3 px-3 py-1.5">
+                <span className="w-32 shrink-0 text-muted">{INDICATOR_LABEL[i.type] ?? i.type}</span>
+                <code className="min-w-0 flex-1 break-all font-mono text-xs sm:text-sm">{i.value}</code>
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
 
       <Section id="redirects" title="Redirect chain">

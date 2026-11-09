@@ -6,6 +6,7 @@ import { feedUrls, getClusters, getImpersonationTrends } from "@/lib/api";
 import { CLASS_STYLE } from "@/lib/classes";
 import type { Cluster, ImpersonationTrend } from "@/lib/types";
 import { CampaignButton } from "@/components/CampaignButton";
+import { INDICATOR_LABEL as TYPE_LABEL } from "@/lib/classes";
 
 const TECHNIQUE_LABEL: Record<string, string> = {
   lookalike_domain: "lookalike domain",
@@ -16,20 +17,6 @@ const TECHNIQUE_LABEL: Record<string, string> = {
   payment_request: "asks for payment",
   remote_access: "remote-access app",
   reward_lure: "prize, refund or returns",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  ip: "IP address",
-  domain: "Domain",
-  nameserver: "Name server",
-  cert_sha256: "Certificate",
-  upi_id: "UPI ID",
-  phone: "Phone",
-  email: "Email",
-  crypto_address: "Crypto address",
-  asn: "ASN",
-  url: "URL",
-  message_family: "Message wording",
 };
 
 const day = (s: string) => new Date(s).toLocaleDateString(undefined, { dateStyle: "medium" });
