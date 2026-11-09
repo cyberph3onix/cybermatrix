@@ -47,9 +47,17 @@ class AnthropicLlm:
         raise LlmUnavailable("anthropic: no structured output")
 
 
-# Flash-Lite: the free tier of plain 2.5 Flash allows only ~20 requests/day, far too few for a demo.
-GEMINI_MODEL = "gemini-2.5-flash-lite"
+# Comma-separated fallback list (GEMINI_MODEL overrides it). Free-tier quotas are per model and small
+# (2.5 Flash-Lite: 20 requests/day as of 2026-11), so on 429 (quota) or 404 (model retired) the next model is tried.
+GEMINI_MODEL = "gemini-3.5-flash-lite,gemini-2.5-flash-lite,gemini-flash-lite-latest"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+def thinking_config(model: str) -> dict[str, Any]:
+    """Hidden "thinking" tokens count against maxOutputTokens and can truncate the JSON; these are short
+    extraction/summary tasks, so keep thinking to the minimum. 2.5 models take a token budget (0 = off);
+    Gemini 3+ rejects that with HTTP 400 and takes a level instead."""
+    return {"thinkingBudget": 0} if model.startswith("gemini-2") else {"thinkingLevel": "minimal"}
 
 
 class GeminiLlm:
@@ -60,7 +68,8 @@ class GeminiLlm:
         if not key:
             raise LlmUnavailable("GEMINI_API_KEY is not set")
         import httpx
-        self.model = os.environ.get("GEMINI_MODEL") or GEMINI_MODEL
+        self.models = [m.strip() for m in (os.environ.get("GEMINI_MODEL") or GEMINI_MODEL).split(",") if m.strip()]
+        self.model = self.models[0]
         self._key = key
         self._http = httpx.AsyncClient(timeout=20.0, follow_redirects=False, trust_env=False)
 
@@ -70,18 +79,25 @@ class GeminiLlm:
         body = {"systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": user}]}],
                 "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0,
-                                     "responseMimeType": "application/json", "responseJsonSchema": schema,
-                                     # 2.5 models bill hidden "thinking" tokens against maxOutputTokens, which can
-                                     # truncate the JSON; these are short extraction/summary tasks.
-                                     "thinkingConfig": {"thinkingBudget": 0}}}
-        try:
-            r = await self._http.post(GEMINI_URL.format(model=self.model), json=body,
-                                      headers={"x-goog-api-key": self._key})
-            r.raise_for_status()
-            text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-            out = json.loads(text)
-        except Exception as e:  # noqa: BLE001 - never leak key/request details
-            raise LlmUnavailable(f"gemini: {type(e).__name__}") from None
+                                     "responseMimeType": "application/json", "responseJsonSchema": schema}}
+        out: Any = None
+        for i, model in enumerate(self.models):
+            body["generationConfig"]["thinkingConfig"] = thinking_config(model)
+            try:
+                r = await self._http.post(GEMINI_URL.format(model=model), json=body,
+                                          headers={"x-goog-api-key": self._key})
+                if r.status_code in (404, 429) and i + 1 < len(self.models):
+                    continue  # quota exhausted or model retired: try the next one
+                if r.status_code >= 400:
+                    raise LlmUnavailable(f"gemini: HTTP {r.status_code}")
+                text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                out = json.loads(text)
+                self.model = model  # reported in the check run's source
+                break
+            except LlmUnavailable:
+                raise
+            except Exception as e:  # noqa: BLE001 - never leak key/request details
+                raise LlmUnavailable(f"gemini: {type(e).__name__}") from None
         if not isinstance(out, dict):
             raise LlmUnavailable("gemini: no structured output")
         return out

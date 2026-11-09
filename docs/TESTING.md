@@ -3,7 +3,7 @@
 ## Automated (offline, no keys needed)
 
 ```bash
-cd backend && uv run pytest -q          # 492 tests, ~8 s; live tests are deselected by default
+cd backend && uv run pytest -q          # 495 tests, ~9 s; live tests are deselected by default
 cd backend && uv run ruff check app tests demo
 cd contracts && forge test -vv          # 61 tests, 100% branch coverage
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
@@ -27,8 +27,10 @@ cd backend && uv run pytest -q -m live          # TLS and CT tests against badss
 ```
 
 Known-bad test URL for demos: `https://testsafebrowsing.appspot.com/s/phishing.html` (Google's own test page).
-Free Gemini tiers are small (the default `gemini-2.5-flash-lite`; plain 2.5 Flash allows ~20 requests/day). When the
-quota runs out the AI parts show as unavailable and everything else keeps working.
+Free Gemini quotas are small and per model (2.5 Flash-Lite: 20 requests/day as of 2026-11). The client tries
+`gemini-3.5-flash-lite`, then `gemini-2.5-flash-lite`, then `gemini-flash-lite-latest`, moving on when one returns 429 or 404
+(`GEMINI_MODEL` takes your own comma-separated list). When every quota runs out the AI parts show as unavailable,
+with the HTTP status, and everything else keeps working.
 
 ## The demo (no network, no scam sites)
 
@@ -77,7 +79,7 @@ phrases no longer count (`tests/test_message.py::test_safety_warning_is_not_a_cr
 ### Message analysis on ScamShield-IN
 
 `uv run python -m eval.scamshield` (deterministic checks only, offline; links get the structure and lookalike
-checks). "Flagged" = `suspicious` or worse; a legitimate message that is `low_risk` or `inconclusive` is not flagged.
+checks; add `--llm` for the LLM language signals, and the output says on how many messages they completed). "Flagged" = `suspicious` or worse; a legitimate message that is `low_risk` or `inconclusive` is not flagged.
 
 **Sample (55 messages, hand-verified):** 25 fraud and 25 legit from ScamShield-IN (openrail), plus 5 legitimate bank,
 shop and utility notices written in real formats, because the corpus has no modern bank alerts. Rows whose label looked
@@ -105,8 +107,19 @@ Legitimate messages flagged: **9/424 (2.1%)**. Most of those are "free gift, jus
 we would call scams too, plus one private-IP link (`URL.IP_HOST`).
 
 "Generic Promo Fraud" is mostly ordinary 2010 marketing (property ads, quizzes, even an anti-fraud tip) and we do not
-try to flag it. The two missed scams use one tactic and a link ("car insurance expired, renew now: <domain>"). The LLM
-language signals (`--llm`) are meant to catch those. Wording alone never goes above `suspicious` (heuristic cap).
+try to flag it. The two missed scams use one tactic and a link ("car insurance expired, renew now: <domain>").
+Wording alone never goes above `suspicious` (heuristic cap).
+
+**With the LLM language signals (`--llm`, `gemini-3.5-flash-lite`, run 2026-11-09):**
+
+- Sample: still 25/25 fraud and 0/30 legit flagged; the LLM step completed on 51/55 messages (4 hit free-tier limits
+  and show as unavailable). Legitimate messages mostly move from `inconclusive` to `low_risk` (27/30) because the
+  LLM step adds coverage.
+- Held-out: we ran the LLM step only on the 11 deterministic errors (the full 528-message run does not fit free
+  quotas). It fixed **none** of them. The 2 missed scams each gained one heuristic signal (`MSG.URGENCY`,
+  `MSG.REWARD_LURE`), not enough for `suspicious`, and the extra coverage moved them from `inconclusive` to
+  `low_risk`. The 9 flagged legitimate messages stayed `suspicious`. We did not tune on this result, so the held-out
+  set stays a fair measure. Single-tactic scams with an unknown link are a known gap.
 
 ## On-chain
 

@@ -53,7 +53,7 @@ def test_gemini_is_preferred_anthropic_is_the_fallback_and_none_means_no_llm(mon
     assert isinstance(default_llm(), AnthropicLlm) and default_llm().model == "claude-haiku-5-5"
     monkeypatch.setenv("GEMINI_API_KEY", SECRET_G)
     g = default_llm()
-    assert isinstance(g, GeminiLlm) and g.model == llm_mod.GEMINI_MODEL
+    assert isinstance(g, GeminiLlm) and g.model == llm_mod.GEMINI_MODEL.split(",")[0]
     monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     assert default_llm().model == "gemini-3.5-flash-lite"
 
@@ -159,6 +159,7 @@ def gemini_ok(payload):
 @respx.mock
 async def test_gemini_request_shape_key_in_header_and_thinking_off(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", SECRET_G)
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
     route = respx.post(url__regex=GEMINI_RE).mock(return_value=gemini_ok({"summary": "ok"}))
     out = await GeminiLlm().call_tool(system="SYS", user="USER", tool_name="explain", schema=SCHEMA, max_tokens=99)
     assert out == {"summary": "ok"}
@@ -187,3 +188,33 @@ async def test_gemini_failures_become_llm_unavailable_without_leaking_the_key(mo
     with pytest.raises(LlmUnavailable) as e:
         await GeminiLlm().call_tool(system="s", user="u", tool_name="explain", schema=SCHEMA)
     assert SECRET_G not in str(e.value) and "SECRET" not in repr(e.value)
+
+
+@respx.mock
+@pytest.mark.parametrize("status", [429, 404])
+async def test_gemini_falls_back_to_the_next_model_on_quota_or_retired_model(monkeypatch, status):
+    monkeypatch.setenv("GEMINI_API_KEY", SECRET_G)
+    monkeypatch.setenv("GEMINI_MODEL", "model-a, model-b")
+    a = respx.post(url__regex=r".*/models/model-a:generateContent").mock(return_value=httpx.Response(status, json={}))
+    b = respx.post(url__regex=r".*/models/model-b:generateContent").mock(return_value=gemini_ok({"summary": "ok"}))
+    llm = GeminiLlm()
+    assert await llm.call_tool(system="s", user="u", tool_name="explain", schema=SCHEMA) == {"summary": "ok"}
+    assert a.call_count == 1 and b.call_count == 1 and llm.model == "model-b"
+
+
+@respx.mock
+async def test_gemini_does_not_fall_back_on_other_errors_and_names_the_status(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", SECRET_G)
+    monkeypatch.setenv("GEMINI_MODEL", "model-a,model-b")
+    respx.post(url__regex=r".*/models/model-a:generateContent").mock(return_value=httpx.Response(400, json={}))
+    b = respx.post(url__regex=r".*/models/model-b:generateContent").mock(return_value=gemini_ok({"summary": "ok"}))
+    with pytest.raises(LlmUnavailable, match="HTTP 400"):
+        await GeminiLlm().call_tool(system="s", user="u", tool_name="explain", schema=SCHEMA)
+    assert b.call_count == 0
+
+
+def test_thinking_config_matches_the_model_generation():
+    from app.ai.llm import thinking_config
+    assert thinking_config("gemini-2.5-flash-lite") == {"thinkingBudget": 0}
+    assert thinking_config("gemini-3.5-flash-lite") == {"thinkingLevel": "minimal"}
+    assert thinking_config("gemini-flash-lite-latest") == {"thinkingLevel": "minimal"}
