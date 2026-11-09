@@ -21,7 +21,7 @@ from app.cache import SqlIntelCache
 from app.checks.intel import openphish
 from app.db import Database
 from app.fetch.api_client import ApiClient
-from app.pipeline import Deps
+from app.pipeline import Deps, warm_up
 from app.registry.chain import ChainClient
 from app.registry.sync import sync_loop
 from app.watch import poll_loop
@@ -53,6 +53,9 @@ def create_app(*, database: Database | None = None, llm: LlmClient | None = None
                                 deps=dataclasses.replace(base, api=base.api or api, cache=base.cache or cache,
                                                          llm=base.llm or the_llm))
         task = sync_task = watch_task = None
+        # Build the lookalike permutation index now (~5-10 s cold), not on the first request: the extension's
+        # real-time quick check gives up after 8 s.
+        warm_task = asyncio.create_task(warm_up())
         if background_feeds:
             try:  # download the OpenPhish feed on startup; fall back to the last file on failure
                 await asyncio.wait_for(openphish.FEED.startup(api), 25)
@@ -64,7 +67,7 @@ def create_app(*, database: Database | None = None, llm: LlmClient | None = None
         try:
             yield
         finally:
-            for t in (task, sync_task, watch_task):
+            for t in (task, sync_task, watch_task, warm_task):
                 if t:
                     t.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
