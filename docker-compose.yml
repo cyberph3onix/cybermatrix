@@ -27,7 +27,7 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://cybermatrix:cybermatrix@postgres:5432/cybermatrix
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}  # add your LAN origin to test from a phone
       # On-chain writes are OFF by default: whatever .env holds for these is overridden to empty inside the
       # container, so "Register on-chain" cannot send a transaction. To enable it deliberately, add
       # CHAIN_SEPOLIA_RPC_URL and CHAIN_RELAYER_PRIVATE_KEY to .env (or your shell) before `docker compose up`.

@@ -40,6 +40,7 @@ EMUDHRA_EV = FIX / "certs" / "emudhra" / "em_ev_tls_ca_g3b.pem"
 NOTE = ("Demo fixture: page, TLS handshake, threat-intel and registration data are recorded, not live. The domain is "
         "invented and does not exist.")
 
+SAMPLE_ID = "5f0c2a8e-6b1d-4c43-9a0e-2f3b7d9c1a11"  # the id the /verify page suggests ("Try 5f0c2a8e…1a11")
 PAYPAL_A = "https://paypa1-secure-login.xyz/signin"
 PAYPAL_B = "https://paypa1-verify-account.top/webapps/auth"
 EMUDHRA_SITE = "https://esign-verify.in/"
@@ -152,8 +153,10 @@ async def main(database_url: str) -> None:
             rows.append(await assess_url(url, deps=deps, now=now))
         # the message goes last so its link correlates with the stored PayPal clones
         rows.append(await assess_message(SMS, deps=deps, llm=None))
-        for r in rows:
+        for i, r in enumerate(rows):
             async with db.session() as s:
+                if i == 0 and await store.get_report_row(s, SAMPLE_ID) is None:
+                    r = r.model_copy(update={"report_id": SAMPLE_ID})  # fixed id; skipped when re-seeding
                 r = with_note(await apply_correlation(s, r))
                 await store.save_report(s, r)
             kind = "message" if r.subject_type == SubjectType.MESSAGE else "url"

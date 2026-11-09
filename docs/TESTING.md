@@ -67,6 +67,23 @@ for an uploaded file, hashing in the browser.
 Sepolia transaction from the relayer wallet (check it has Sepolia ETH first: a registration costs a tiny fraction of
 0.001 ETH).
 
+## Real phone
+
+Automated width checks (below) catch layout bugs but not touch, keyboard or browser quirks. To try it on a phone on the
+same Wi-Fi, find the computer's LAN address (`hostname -I`) and tell both containers about it:
+
+```bash
+LAN=192.168.1.23    # your address
+PUBLIC_API_URL=http://$LAN:8000 CORS_ORIGINS=http://$LAN:3000 docker compose up -d --build
+# phone: http://192.168.1.23:3000   (the OS firewall must allow ports 3000 and 8000)
+```
+
+`PUBLIC_API_URL` is baked into the frontend at build time, hence `--build`. Plain HTTP is fine for this check; the
+camera/QR flow uses file upload, not live camera, so it doesn't need HTTPS.
+
+Checked so far (Chrome, iframes at 320, 360, 375 and 412 px, on all 8 page types): no horizontal overflow, inputs at
+16 px (iOS doesn't zoom), nav and buttons at least 44 px tall. Not checked on a physical device.
+
 ## Browser checklist (done by hand; re-run before the demo)
 
 - Home: type a link, a message, an email; the Investigate button must not move while you type.

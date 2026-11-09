@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app import store
 from app.correlation.clusters import build_clusters
 from app.db import Database, ReportRow
-from demo.seed import main
+from demo.seed import SAMPLE_ID, main
 
 
 async def test_demo_seed_tells_the_demo_story(tmp_path):
@@ -17,8 +17,10 @@ async def test_demo_seed_tells_the_demo_story(tmp_path):
             reports = {r.normalized_subject.split("/")[2] if r.subject_type == "url" else "message": store.parse_report(r)
                        for r in rows}
             clusters = build_clusters(await store.indicator_rows(s))
+            sample = await store.get_report_row(s, SAMPLE_ID)
     finally:
         await db.aclose()
+    assert sample is not None and "paypa1-secure-login.xyz" in sample.normalized_subject  # the /verify page's "Try" hint
     assert {k: str(v.classification) for k, v in reports.items()} == {
         "paypa1-secure-login.xyz": "confirmed_malicious", "paypa1-verify-account.top": "suspicious",
         "esign-verify.in": "confirmed_malicious", "www.sbi.co.in": "low_risk", "message": "confirmed_malicious"}

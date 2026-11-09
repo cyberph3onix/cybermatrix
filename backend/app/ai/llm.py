@@ -23,12 +23,13 @@ class LlmClient(Protocol):
 class AnthropicLlm:
     model = MODEL
 
-    def __init__(self) -> None:
+    def __init__(self, *, http_client: Any = None) -> None:
+        """`http_client` is only for tests (an httpx2 client with a mock transport)."""
         key = os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise LlmUnavailable("ANTHROPIC_API_KEY is not set")
         import anthropic
-        self._client = anthropic.AsyncAnthropic(api_key=key, timeout=20.0, max_retries=1)
+        self._client = anthropic.AsyncAnthropic(api_key=key, timeout=20.0, max_retries=1, http_client=http_client)
 
     async def call_tool(self, *, system: str, user: str, tool_name: str, schema: dict[str, Any],
                         max_tokens: int = 700) -> dict[str, Any]:

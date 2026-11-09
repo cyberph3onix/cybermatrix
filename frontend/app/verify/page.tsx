@@ -73,7 +73,7 @@ export default function VerifyPage() {
             value={id}
             onChange={(e) => setId(e.target.value)}
             placeholder="5f0c2a8e-6b1d-4c43-9a0e-2f3b7d9c1a11"
-            className="min-h-11 w-full rounded-md border border-rule bg-panel px-3 font-mono text-sm"
+            className="min-h-11 w-full rounded-md border border-rule bg-panel px-3 font-mono text-base"
             autoComplete="off"
             spellCheck={false}
           />
@@ -85,8 +85,8 @@ export default function VerifyPage() {
             {busy ? "Verifying…" : "Verify"}
           </button>
         </div>
-        <p className="text-sm text-muted">
-          Try <button type="button" className="font-mono text-accent underline" onClick={() => setId("5f0c2a8e-6b1d-4c43-9a0e-2f3b7d9c1a11")}>5f0c2a8e…1a11</button>
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
+          Try <button type="button" className="min-h-11 px-1 font-mono text-accent underline" onClick={() => setId("5f0c2a8e-6b1d-4c43-9a0e-2f3b7d9c1a11")}>5f0c2a8e…1a11</button>
         </p>
       </form>
 

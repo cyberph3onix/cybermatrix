@@ -85,7 +85,7 @@ export default function Home() {
             type="checkbox"
             checked={owns}
             onChange={(e) => setOwns(e.target.checked)}
-            className="mt-1 size-4"
+            className="mt-0.5 size-5 shrink-0"
           />
           <span>
             I own this site. Also check whether <code>/.git/HEAD</code> and <code>/.env</code> are publicly

@@ -30,8 +30,9 @@ export function RegisterButton({ reportId }: { reportId: string }) {
     <div className="rounded-md border border-rule bg-panel p-4">
       <p className="max-w-prose text-sm">
         Registering saves a fingerprint of this report on the Sepolia test network so anyone can
-        later check it hasn&apos;t been altered. Only the fingerprint, status, time and your
-        wallet address go on-chain. The link, message and personal details stay off-chain.
+        later check it hasn&apos;t been altered. Only the fingerprint, status and time go on-chain,
+        submitted from this service&apos;s shared relayer address (not a wallet of yours). The link,
+        message and personal details stay off-chain.
       </p>
 
       {rec ? (

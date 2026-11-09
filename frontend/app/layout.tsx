@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link
                   key={n.href}
                   href={n.href}
-                  className="rounded px-3 py-2 text-muted hover:bg-paper hover:text-ink"
+                  className="inline-flex min-h-11 items-center rounded px-3 text-muted hover:bg-paper hover:text-ink"
                 >
                   {n.label}
                 </Link>
