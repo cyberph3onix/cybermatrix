@@ -26,7 +26,7 @@ PHISH = "https://sbi.co.in.kyc-verify-now.top/login?ref=sms"
 
 
 class FakeChain:
-    address = "0x22Cc4217bD5639F5b7159eDA584AC066eb8e73bc"
+    address = "0x465094577Fe42BD31d705581bD3baAB51397BbB4"  # v2
 
     def __init__(self):
         self.reports: dict[str, SimpleNamespace] = {}
@@ -63,7 +63,7 @@ class FakeChain:
             self.reports[parent_hash].status = RegistryStatus.SUPERSEDED
         self.reports[h] = r
         return RegistryRecord(report_id=report.report_id, report_hash=h, parent_hash=parent_hash or "0x" + "00" * 32,
-                              chain_id=11155111, contract_address="0xREG",
+                              chain_id=11155111, contract_address=self.address,
                               onchain_id=r.id, tx_hash="0x" + "ab" * 32, reporter_address=r.reporter)
 
     async def aclose(self):
@@ -365,3 +365,31 @@ def test_impersonation_trends_endpoint(client):
         assess(client)  # the SBI clone, twice
     trends = client.get("/trends/impersonation").json()
     assert trends and trends[0]["brand_id"] == "sbi" and trends[0]["reports"] >= 2 and trends[0]["links"] >= 2
+
+
+
+def test_registry_sync_refreshes_statuses_and_skips_old_contracts(client, chain):
+    import asyncio
+
+    from app.registry.sync import refresh_statuses
+    rid = assess(client)
+    client.post(f"/reports/{rid}/register")
+    next(iter(chain.reports.values())).status = RegistryStatus.VALIDATED  # a validator acted on-chain
+    st = client.app.state.cm
+    assert asyncio.run(refresh_statuses(st.db, chain)) == 1
+    assert asyncio.run(refresh_statuses(st.db, chain)) == 0  # idempotent
+
+    old = assess(client)
+    client.post(f"/reports/{old}/register")
+    async def move_to_old_contract():
+        from app.db import RegistryRow
+        async with st.db.session() as s:
+            row = await s.get(RegistryRow, old)
+            row.contract_address = "0x22Cc4217bD5639F5b7159eDA584AC066eb8e73bc"  # v1
+            await s.commit()
+    asyncio.run(move_to_old_contract())
+    next(r for r in chain.reports.values() if r.id == 2).status = RegistryStatus.REJECTED
+    assert asyncio.run(refresh_statuses(st.db, chain)) == 0  # v1 ids mean something else on v2
+    h = client.get(f"/reports/{old}/history").json()
+    assert "earlier registry contract" in h["note"] and not h["can_dispute"] and not h["can_reassess"]
+    assert client.post(f"/reports/{old}/reassess").status_code == 409

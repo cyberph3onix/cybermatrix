@@ -29,6 +29,7 @@ from app.pipeline_upi import finalize as finalize_upi
 from app.qr import QrError, decode_qr
 from app.ratelimit import client_ip, limit_dependency
 from app.registry.chain import ZERO_HASH, ChainClient, ChainError, ChainUnavailable
+from app.registry.sync import on_contract
 from app.schemas import (
     AssessmentReport,
     AssessRequest,
@@ -257,7 +258,10 @@ async def get_registration(report_id: str, st: St, db: Db) -> RegistryRecord | N
     if rec is None or rec.onchain_id is None:
         return rec
     try:  # status can change on-chain (validated / disputed); refresh best-effort
-        onchain = await _get_chain(st).get_report(rec.onchain_id)
+        chain = _get_chain(st)
+        if not on_contract(rec.contract_address, chain):
+            return rec  # registered on an earlier deployment: its id means something else on this contract
+        onchain = await chain.get_report(rec.onchain_id)
         if onchain.status != rec.status:
             rec = rec.model_copy(update={"status": onchain.status})
             await store.save_registry(db, rec)
@@ -325,6 +329,14 @@ async def history(report_id: str, st: St, db: Db) -> ReportHistory:
     if reg is None or reg.onchain_id is None:
         return ReportHistory(report_id=report_id, registered=False)
     chain = _get_chain(st)
+    if not on_contract(reg.contract_address, chain):
+        return ReportHistory(report_id=report_id, registered=True, chain_id=reg.chain_id,
+                             contract_address=reg.contract_address,
+                             versions=[ReportVersion(report_id=report_id, report_hash=reg.report_hash,
+                                                     onchain_id=reg.onchain_id, status=RegistryStatus(reg.status),
+                                                     tx_hash=reg.tx_hash, is_current=True)],
+                             note="Registered on an earlier registry contract. Its record stays verifiable there; "
+                                  "disputes and revisions use the current contract.")
     try:
         versions: list[ReportVersion] = []
         for rid, h, vrow in await _lineage(db, reg):
@@ -365,6 +377,8 @@ async def dispute_reason(report_id: str, req: DisputeReasonRequest, st: St, db: 
     if reg is None or reg.onchain_id is None:
         raise HTTPException(409, "Only reports registered on-chain can be disputed.")
     chain = _get_chain(st)
+    if not on_contract(reg.contract_address, chain):
+        raise HTTPException(409, "This report is on an earlier registry contract, which no longer takes disputes.")
     text = redact(req.reason.strip()).text
     reason_hash = store.hash_bytes(text.encode())
     try:
@@ -395,6 +409,8 @@ async def reassess(report_id: str, st: St, db: Db) -> AssessResponse:
     if reg is None or reg.onchain_id is None:
         raise HTTPException(409, "Register this report on-chain first; a revision links to the registered version.")
     chain = _get_chain(st)
+    if not on_contract(reg.contract_address, chain):
+        raise HTTPException(409, "This report is on an earlier registry contract; assess the link again instead.")
     try:
         status = (await chain.get_report(reg.onchain_id)).status
     except (ChainError, ChainUnavailable) as e:

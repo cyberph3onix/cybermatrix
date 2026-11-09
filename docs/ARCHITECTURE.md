@@ -35,8 +35,9 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
    (`withdraw`, balance zeroed before the transfer; a reentrancy test covers it). The bond prices abuse but does not
    stop a well-funded attacker; validators are still trusted. Disputes are sent from the user's wallet, never by the
    relayer, so the relayer cannot be drained.
-3. **Registry status can lag.** `CORR.VALIDATED_MATCH` uses the status this server last saw; it refreshes when a
-   report's registration is viewed, not continuously.
+3. **Registry status lag is bounded (fixed).** A background job (`app/registry/sync.py`, every `REGISTRY_SYNC_S`,
+   default 10 min) re-reads every non-terminal registration, so `CORR.VALIDATED_MATCH` lags the chain by at most one
+   interval. Rows from the v1 contract keep their last status: their on-chain ids mean something else on v2.
 4. **Single relayer, single owner.** All reports register from one address, so the on-chain reporter does not identify
    a user, and the contract owner and validators are fully trusted.
 5. **Rate limits are in-process.** They assume one backend instance. Several instances, or a proxy that is not trusted
