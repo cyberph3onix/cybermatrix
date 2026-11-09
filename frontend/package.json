@@ -9,6 +9,7 @@
     "lint": "eslint",
     "predev": "node scripts/sync-fixture.mjs",
     "prebuild": "node scripts/sync-fixture.mjs",
+    "pretypecheck": "node scripts/sync-fixture.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
