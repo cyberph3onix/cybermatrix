@@ -55,6 +55,11 @@ For a repeatable demo without live feeds, `cd backend && uv run python -m demo.s
 
 After changing `backend/app/schemas.py` or any route, regenerate the frontend types: `cd frontend && npm run gen`.
 
+## Browser extension
+
+`extension/` holds a Manifest V3 extension: right-click a link to check it before opening it. Load it unpacked
+(see [`extension/README.md`](extension/README.md)). It only sends links you choose.
+
 ## Development
 
 ```bash

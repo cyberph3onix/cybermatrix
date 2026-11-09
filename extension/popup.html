@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CyberMatrix</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; width: 320px; margin: 0; padding: 14px; color: #1d2733; background: #fbfaf7; }
+    h1 { font-size: 15px; margin: 0 0 8px; }
+    .url { font: 12px ui-monospace, monospace; word-break: break-all; color: #5b6672; }
+    button { margin-top: 10px; min-height: 36px; width: 100%; border: 0; border-radius: 4px; background: #1d4e7b; color: #fff; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .6; }
+    .result { margin-top: 12px; padding: 10px; border-radius: 4px; border-left: 6px solid; background: #fff; }
+    .note { margin-top: 10px; font-size: 12px; color: #5b6672; }
+    a { color: #1d4e7b; }
+  </style>
+</head>
+<body>
+  <h1>Check this page</h1>
+  <div class="url" id="url"></div>
+  <button id="go">Check with CyberMatrix</button>
+  <div id="out"></div>
+  <p class="note">Only the address of this tab is sent, and only when you press the button.
+    The best result is “low risk”, never “safe”. <a href="options.html" target="_blank">Settings</a></p>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

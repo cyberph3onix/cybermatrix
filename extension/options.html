@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CyberMatrix settings</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; color: #1d2733; }
+    label { display: block; margin-top: 14px; font-weight: 600; }
+    input { width: 100%; padding: 8px; font-size: 14px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <h1>CyberMatrix link check</h1>
+  <label for="api">API address</label>
+  <input id="api" placeholder="http://localhost:8000">
+  <label for="app">Web app address (for report links)</label>
+  <input id="app" placeholder="http://localhost:3000">
+  <button id="save">Save</button>
+  <p id="msg"></p>
+  <p>A non-local API address asks for permission to reach that host. Nothing is sent until you check a link.</p>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

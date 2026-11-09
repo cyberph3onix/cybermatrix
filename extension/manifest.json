@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "CyberMatrix link check",
+  "version": "0.1.0",
+  "description": "Check a link with CyberMatrix before you open it. Only links you choose are sent.",
+  "permissions": ["contextMenus", "storage", "activeTab", "notifications"],
+  "host_permissions": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "Check this page with CyberMatrix" },
+  "options_page": "options.html",
+  "icons": { "128": "icon.png" }
+}
