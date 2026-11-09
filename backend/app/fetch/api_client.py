@@ -14,7 +14,7 @@ import httpx
 ALLOWED_HOSTS = frozenset({
     "api.certspotter.com", "crt.sh",
     "safebrowsing.googleapis.com", "urlhaus-api.abuse.ch", "www.virustotal.com",
-    "raw.githubusercontent.com", "data.iana.org",
+    "raw.githubusercontent.com", "data.iana.org", "dns.google",
 })
 USER_AGENT = "CyberMatrix/0.1"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024  # the OpenPhish feed and IANA bootstrap are the largest legitimate bodies

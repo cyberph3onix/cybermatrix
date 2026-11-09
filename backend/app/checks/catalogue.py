@@ -32,6 +32,8 @@ CATALOGUE: dict[str, Meta] = {
     "REDIRECT.LONG_CHAIN": Meta("redirect", "high", "technical"),
     "DOMAIN.YOUNG": Meta("domain", "medium", "heuristic"),
     "DOMAIN.SUSPICIOUS_TLD": Meta("domain", "low", "heuristic"),
+    "DOMAIN.FAST_FLUX": Meta("domain", "medium", "heuristic"),
+    "DOMAIN.FREE_DNS": Meta("domain", "low", "heuristic"),
     "PAGE.CREDENTIAL_FORM": Meta("phishing", "high", "technical"),
     "PAGE.FORM_ACTION_CROSS_DOMAIN": Meta("phishing", "high", "technical"),
     "PAGE.BRAND_MISMATCH": Meta("impersonation", "medium", "technical"),
@@ -67,6 +69,7 @@ CATALOGUE: dict[str, Meta] = {
 POSTURE_IDS = frozenset({
     "POSTURE.NO_HSTS", "POSTURE.NO_CSP", "POSTURE.NO_XFO", "POSTURE.NO_XCTO", "POSTURE.MIXED_CONTENT",
     "POSTURE.OLD_TLS_VERSION", "POSTURE.SERVER_BANNER_VERSION", "POSTURE.EXPOSED_FILE",
+    "POSTURE.NO_SPF", "POSTURE.NO_DMARC", "POSTURE.DMARC_NOT_ENFORCED",
 })
 
 # Posture findings never score (RISK_ENGINE.md §2) and are reported in `security_posture`. Severity is only
@@ -80,5 +83,8 @@ POSTURE_META: dict[str, Meta] = {
     "POSTURE.OLD_TLS_VERSION": Meta("security_posture", "low", "technical"),
     "POSTURE.SERVER_BANNER_VERSION": Meta("security_posture", "info", "technical"),
     "POSTURE.EXPOSED_FILE": Meta("security_posture", "medium", "technical"),
+    "POSTURE.NO_SPF": Meta("security_posture", "low", "technical"),
+    "POSTURE.NO_DMARC": Meta("security_posture", "low", "technical"),
+    "POSTURE.DMARC_NOT_ENFORCED": Meta("security_posture", "info", "technical"),
 }
 assert set(POSTURE_META) == POSTURE_IDS

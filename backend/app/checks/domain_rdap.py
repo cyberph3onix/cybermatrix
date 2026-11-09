@@ -120,7 +120,7 @@ async def run(ctx: AssessmentContext) -> CheckResult:
         info = await _query(ctx, domain)
         if not info.get("registered"):
             return make_run(GROUP, CheckStatus.UNAVAILABLE, SOURCE, t0, "RDAP response has no registration date"), []
-        ctx.nameservers = list(info.get("nameservers") or [])
+        ctx.nameservers = sorted(set(ctx.nameservers) | set(info.get("nameservers") or []))  # merged with domain.dns
         findings = analyze(domain, first_url, info, ctx.now)
         detail = None
         try:  # also check where the link led, e.g. a shortener pointing at a brand-new domain

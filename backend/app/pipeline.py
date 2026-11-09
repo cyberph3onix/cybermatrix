@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.brands import BrandIndex, get_index
-from app.checks import domain_rdap, headers, lookalike, page, page_llm, redirects, tls_chain, tls_ct, url_structure
+from app.checks import dns, domain_rdap, headers, lookalike, page, page_llm, redirects, tls_chain, tls_ct, url_structure
 from app.checks.base import AssessmentContext, CheckResult, make_run
 from app.checks.intel import gsb, openphish, urlhaus, virustotal
 from app.engine import coverage as cov
@@ -52,6 +52,7 @@ CHECKS: list[CheckSpec] = [
     CheckSpec(openphish.GROUP, openphish.run, 30, openphish.SOURCE),
     CheckSpec(virustotal.GROUP, virustotal.run, 30, virustotal.SOURCE),
     CheckSpec(domain_rdap.GROUP, domain_rdap.run, 30, domain_rdap.SOURCE),
+    CheckSpec(dns.GROUP, dns.run, 15, dns.SOURCE),
     # Posture (weight 0): waits for the fetch and the TLS scan, reports into security_posture only.
     CheckSpec(headers.GROUP, headers.run, 50, headers.SOURCE),
 ]

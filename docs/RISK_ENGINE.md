@@ -45,7 +45,7 @@ Coverage = Σ weight(completed check groups) / Σ weight(applicable check groups
 | fetch + redirects | 15 |
 | page content | 10 |
 | tls.chain + tls.revocation + tls.ct | 20 |
-| domain.rdap | 5 |
+| domain.rdap + domain.dns | 5 (3 + 2) |
 
 For messages: indicator extraction 20, LLM signals 30, and pipeline runs on extracted URLs 50. If there are no
 URLs, that 50 is re-distributed proportionally.
@@ -100,6 +100,8 @@ Confidence:
 | REDIRECT.LONG_CHAIN | redirect | high | technical | ≥ 3 cross-domain hops |
 | DOMAIN.YOUNG | domain | medium | heuristic | RDAP registration < 30 days |
 | DOMAIN.SUSPICIOUS_TLD | domain | low | heuristic | TLD on curated abuse-heavy list |
+| DOMAIN.FAST_FLUX | domain | medium | heuristic | ≥ 5 A records across ≥ 3 distinct /16 networks with a TTL ≤ 300 s (DNS-over-HTTPS, dns.google) |
+| DOMAIN.FREE_DNS | domain | low | heuristic | Nameservers on a free/dynamic DNS provider, or the host is a dynamic-DNS subdomain |
 | PAGE.CREDENTIAL_FORM | phishing | high | technical | Password/OTP/card field on a page whose title/brand text claims a protected brand while the domain isn't official |
 | PAGE.FORM_ACTION_CROSS_DOMAIN | phishing | high | technical | Sensitive form posts to a different registrable domain |
 | PAGE.BRAND_MISMATCH | impersonation | medium | technical | Title/og:site_name claims a protected brand; domain not official (no credential form) |
@@ -164,7 +166,7 @@ word of the brand appears in the registrable domain. The model extracts; code de
 ### Security posture (reported separately, 0 points)
 
 `POSTURE.NO_HSTS, POSTURE.NO_CSP, POSTURE.NO_XFO, POSTURE.NO_XCTO, POSTURE.MIXED_CONTENT, POSTURE.OLD_TLS_VERSION,
-POSTURE.SERVER_BANNER_VERSION, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
+POSTURE.SERVER_BANNER_VERSION, POSTURE.NO_SPF, POSTURE.NO_DMARC, POSTURE.DMARC_NOT_ENFORCED, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
 only when the user ticks "I own this site").
 
 Posture checks run as group `posture.headers` (coverage weight 0, so they never change coverage or the score).

@@ -17,7 +17,8 @@ WEIGHTS: dict[str, int] = {
     "tls.chain": 10,
     "tls.revocation": 5,
     "tls.ct": 5,
-    "domain.rdap": 5,
+    "domain.rdap": 3,  # domain.rdap + domain.dns = 5
+    "domain.dns": 2,
 }
 
 
