@@ -9,6 +9,7 @@ import { StrengthLegend } from "@/components/Badges";
 import { CertificateCard } from "@/components/CertificateCard";
 import { ClassBanner } from "@/components/ClassBanner";
 import { FindingGroups } from "@/components/FindingGroups";
+import { InvestigationTrace } from "@/components/InvestigationTrace";
 import { RedirectTimeline } from "@/components/RedirectTimeline";
 import { RegisterButton } from "@/components/RegisterButton";
 import { Section } from "@/components/Section";
@@ -60,6 +61,14 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
           </ul>
         </Section>
       )}
+
+      <Section
+        id="investigation"
+        title="How we investigated"
+        intro="Every question we asked, which sources answered, what each one found, and how the rules reached the verdict."
+      >
+        <InvestigationTrace report={report} />
+      </Section>
 
       {report.ai && (
         <Section id="ai" title="Plain-language explanation">

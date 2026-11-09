@@ -7,7 +7,7 @@ function fmtData(data: Record<string, unknown>) {
 
 export function FindingCard({ finding: f }: { finding: Finding }) {
   return (
-    <li className="rounded-md border border-rule bg-panel">
+    <li id={`finding-${f.check_id}`} className="scroll-mt-4 rounded-md border border-rule bg-panel">
       <details className="group">
         <summary className="flex cursor-pointer list-none items-start gap-3 p-3 sm:p-4">
           <svg

@@ -123,4 +123,13 @@ export const CHECK_GROUP_LABEL: Record<string, string> = {
   "tls.revocation": "Revocation",
   "tls.ct": "Certificate Transparency",
   "domain.rdap": "Domain registration",
+  "domain.dns": "DNS",
+  "url.lookalike": "Look-alike domains",
+  "page.llm": "AI page reading",
+  "page.screenshot": "AI screenshot reading",
+  "posture.headers": "Security headers",
+  "message.extract": "Message analysis",
+  "message.signals": "AI language signals",
+  "message.urls": "Links in the message",
+  "upi.payee": "UPI payee",
 };
