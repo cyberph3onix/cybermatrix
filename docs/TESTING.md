@@ -22,7 +22,8 @@ raises the Certificate Transparency rate limit). Without a key the matching chec
 coverage drops; nothing breaks.
 
 ```bash
-cd backend && uv run pytest -q -m live          # hits the real APIs
+cd backend && uv run pytest -q -m live          # TLS and CT tests against badssl.com and crt.sh
+# Threat-intel and Gemini calls have no automated live test: assess the known-bad URL below and check coverage
 ```
 
 Known-bad test URL for demos: `https://testsafebrowsing.appspot.com/s/phishing.html` (Google's own test page).
