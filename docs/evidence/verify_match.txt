@@ -1,0 +1,13 @@
+MATCH
+  computed hash : 0xe8db935c3a232b5389c14869c1d0ace58d0f38c6231d1ecff0fecdceb2ad91d3
+  on-chain hash : 0xe8db935c3a232b5389c14869c1d0ace58d0f38c6231d1ecff0fecdceb2ad91d3
+  report id     : 1
+  status        : validated
+  registered at : 2026-11-09T17:36:12Z
+  reporter      : 0x1B7c212ffC6FA799fE6131462F2C05046B8a848e
+  contract      : 0x5De4Cd6F651A4D80ddA16fc70431dd669621BeeA (chain 11155111)
+  tx            : 0x08d6c9ef458d86e87121774a2c57439855f76b8b918ab6275e4733aee44237c5
+  etherscan     : https://sepolia.etherscan.io/tx/0x08d6c9ef458d86e87121774a2c57439855f76b8b918ab6275e4733aee44237c5
+
+A matching hash proves this report is unchanged since it was registered. It does not prove the report's conclusions are true.
+exit=0
