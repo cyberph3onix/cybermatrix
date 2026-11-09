@@ -17,7 +17,7 @@ from app.checks.base import AssessmentContext, CheckResult, evidence, make_findi
 from app.checks.intel.common import FETCH_WAIT_S, cached_json
 from app.fetch.api_client import ApiClient, ApiNotFound, ApiUnavailable
 from app.schemas import CheckStatus, Finding
-from app.urlutil import URLParseError, icann_registrable_domain, parse_url
+from app.urlutil import URLParseError, icann_registrable_domain, parse_url, registrable_domain
 
 GROUP = "domain.rdap"
 SOURCE = "rdap"
@@ -102,6 +102,39 @@ def analyze(domain: str, url: str, info: dict[str, Any], now: datetime) -> list[
         limitation="Many legitimate sites are also new; this signal is only a hint.")]
 
 
+CRTSH = "https://crt.sh/"
+
+
+async def first_cert_seen(ctx: AssessmentContext, site: str) -> datetime | None:
+    """Earliest certificate naming `site` exactly (not a wildcard) in crt.sh's full CT history. Cert Spotter is not
+    usable here: it lists unexpired certificates only, so with 45-90 day certificates every site would look new."""
+    async def fetch(api: ApiClient) -> dict[str, Any]:
+        rows = await api.get_json(CRTSH, params={"q": site, "output": "json"})
+        if not isinstance(rows, list):
+            raise ApiUnavailable("crt.sh: unexpected response")
+        dates = [r.get("not_before") for r in rows if isinstance(r, dict)
+                 and site in str(r.get("name_value", "")).lower().split("\n")]
+        return {"first": min((d for d in dates if d), default=None)}
+    first = (await cached_json(ctx, "crtsh_first", f"first:{site}", fetch)).get("first")
+    return _dt(first)  # crt.sh times are UTC without a zone
+
+
+def analyze_hosted(site: str, platform: str, url: str, first: datetime, now: datetime) -> list[Finding]:
+    age = now - first
+    if age >= YOUNG or age < timedelta(0):
+        return []
+    return [make_finding(
+        "DOMAIN.YOUNG", f"{site} first appeared {age.days} day(s) ago (hosted on {platform})",
+        [evidence("ct_first_seen", f"Earliest certificate for {site} in Certificate Transparency: {first.date().isoformat()} "
+                  f"({age.days} days before this check). {platform} itself is old, so its registration date says nothing "
+                  "about this site.", "crt.sh", {"site": site, "platform": platform, "url": url,
+                                                 "first_certificate": first.isoformat(), "age_days": age.days},
+                  observed_at=now)],
+        "Phishing pages are often set up on free hosting platforms days before use.",
+        "Be extra careful: verify this site through an official channel.",
+        limitation="First certificate is a stand-in for site age; a site can exist before it gets its own certificate.")]
+
+
 def _domain_of(url: str) -> str | None:
     try:
         host = parse_url(url).host
@@ -123,6 +156,16 @@ async def run(ctx: AssessmentContext) -> CheckResult:
         ctx.nameservers = sorted(set(ctx.nameservers) | set(info.get("nameservers") or []))  # merged with domain.dns
         findings = analyze(domain, first_url, info, ctx.now)
         detail = None
+        site = registrable_domain(ctx.url.host)  # private PSL suffixes: me.pages.dev, not pages.dev
+        if site != domain and not findings:
+            try:
+                first = await first_cert_seen(ctx, site)
+                if first is None:
+                    detail = f"{site} is on {domain}; no certificate naming it exactly, so its own age is unknown"
+                else:
+                    findings += analyze_hosted(site, domain, first_url, first, ctx.now)
+            except ApiUnavailable as e:
+                detail = f"age of {site} on {domain} unknown: {e}"
         try:  # also check where the link led, e.g. a shortener pointing at a brand-new domain
             fr = await asyncio.wait_for(ctx.fetch(), FETCH_WAIT_S)
             final_domain = _domain_of(fr.final_url) if fr.final_url else None

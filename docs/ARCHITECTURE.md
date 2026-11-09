@@ -49,8 +49,10 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
    explanation or the language signals worse. We flag obvious attempts and say so in the report.
 8. **Correlation is local and weak by design.** It only sees reports stored on this server, and shared hosting makes
    infrastructure matches meaningless on their own, so those are low severity.
-9. **RDAP and hosting platforms.** Domain age is looked up for the registered domain (`appspot.com`), so a brand-new
-   site on an old hosting platform is not flagged as young.
+9. **RDAP and hosting platforms (partly fixed).** RDAP only knows the platform (`pages.dev`, registered years ago). For
+   sites on a private PSL suffix we now use the earliest certificate naming the site exactly in crt.sh's full CT history
+   (`DOMAIN.YOUNG`, source `crt.sh`). Cert Spotter cannot be used for this: it lists unexpired certificates only. Sites
+   served only under the platform's wildcard certificate (`*.github.io`) still have no age signal, and the report says so.
 10. **GSB v5 sends the full URL to Google** and is licensed for non-commercial use. A `hashes.search` client that
     sends only hash prefixes is the privacy-preserving alternative.
 11. **UPI QR codes cannot be verified.** We only check whether the payee ID appeared in earlier reports.

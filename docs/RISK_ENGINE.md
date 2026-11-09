@@ -98,7 +98,7 @@ Confidence:
 | URL.KEYWORDS | phishing | low | heuristic | login/verify/kyc/refund/update/secure in host or path |
 | REDIRECT.CROSS_DOMAIN | redirect | medium | technical | Final registrable domain ≠ submitted one |
 | REDIRECT.LONG_CHAIN | redirect | high | technical | ≥ 3 cross-domain hops |
-| DOMAIN.YOUNG | domain | medium | heuristic | RDAP registration < 30 days |
+| DOMAIN.YOUNG | domain | medium | heuristic | RDAP registration < 30 days; for a site on a hosting platform (private PSL suffix), first crt.sh certificate naming it < 30 days |
 | DOMAIN.SUSPICIOUS_TLD | domain | low | heuristic | TLD on curated abuse-heavy list |
 | DOMAIN.FAST_FLUX | domain | medium | heuristic | ≥ 5 A records across ≥ 3 distinct /16 networks with a TTL ≤ 300 s (DNS-over-HTTPS, dns.google) |
 | DOMAIN.FREE_DNS | domain | low | heuristic | Nameservers on a free/dynamic DNS provider, or the host is a dynamic-DNS subdomain |

@@ -182,3 +182,33 @@ def test_outdated_software_is_posture_only():
     fs = headers.analyze({"server": "nginx/1.16.1"}, "https://example.com/", b"", "text/html", "TLSv1.3", NOW)
     [f] = [f for f in fs if f.check_id == "POSTURE.OUTDATED_SOFTWARE"]
     assert f.category == "security_posture" and "backport" in f.limitation and f.evidence[0].data["eol"]
+
+
+
+def _crtsh(rows):
+    return respx.get(domain_rdap.CRTSH).mock(return_value=httpx.Response(200, json=rows))
+
+
+@respx.mock
+async def test_new_site_on_old_hosting_platform_is_young_by_ct_history():
+    """Limitation 9: RDAP only knows pages.dev (old); crt.sh's first certificate for the site itself is days old."""
+    BOOT = {"services": [[["dev"], [RDAP_BASE]]]}
+    respx.get(domain_rdap.BOOTSTRAP).mock(return_value=httpx.Response(200, json=BOOT))
+    respx.get(f"{RDAP_BASE}domain/pages.dev").mock(return_value=httpx.Response(200, json=rdap_body("2019-01-01T00:00:00Z")))
+    nb = (NOW - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%S")
+    _crtsh([{"name_value": "sbi-kyc-update.pages.dev", "not_before": nb},
+            {"name_value": "*.pages.dev\npages.dev", "not_before": "2020-01-01T00:00:00"}])  # the platform's wildcard
+    run, findings = await domain_rdap.run(make_ctx("https://sbi-kyc-update.pages.dev/login"))
+    [f] = findings
+    assert (f.check_id, f.evidence[0].source, f.evidence[0].data["age_days"]) == ("DOMAIN.YOUNG", "crt.sh", 3)
+    assert "pages.dev itself is old" in f.evidence[0].description
+
+
+@respx.mock
+async def test_hosted_site_with_only_a_wildcard_cert_has_unknown_age():
+    BOOT = {"services": [[["io"], [RDAP_BASE]]]}
+    respx.get(domain_rdap.BOOTSTRAP).mock(return_value=httpx.Response(200, json=BOOT))
+    respx.get(f"{RDAP_BASE}domain/github.io").mock(return_value=httpx.Response(200, json=rdap_body("2013-03-08T00:00:00Z")))
+    _crtsh([])
+    run, findings = await domain_rdap.run(make_ctx("https://someone.github.io/"))
+    assert findings == [] and run.status == "completed" and "age is unknown" in run.detail
