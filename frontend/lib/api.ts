@@ -14,6 +14,7 @@ import type {
   RegistryRecord,
   ReportHistory,
   VerificationResult,
+  Watch,
 } from "./types";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
@@ -149,4 +150,13 @@ export async function ownershipVerify(challenge: string): Promise<OwnershipGrant
 /** Brands that several suspicious reports impersonate (recurring impersonation patterns). */
 export async function getImpersonationTrends(): Promise<ImpersonationTrend[]> {
   return request("/trends/impersonation");
+}
+
+/** Start monitoring a domain's certificates in Certificate Transparency. Keep the returned watch_id. */
+export async function createWatch(domain: string): Promise<Watch> {
+  return request("/watch", json("POST", { domain }), 60_000);
+}
+
+export async function getWatch(id: string): Promise<Watch> {
+  return request(`/watch/${encodeURIComponent(id)}`);
 }

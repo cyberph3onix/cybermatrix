@@ -310,6 +310,31 @@ class OwnershipGrant(Strict):
     expires_at: datetime
 
 
+class WatchRequest(Strict):
+    domain: str = Field(min_length=3, max_length=253, description="Domain to monitor in Certificate Transparency")
+
+
+class WatchAlert(Strict):
+    cert_sha256: str
+    dns_names: list[str]
+    issuer: str
+    not_before: str | None = None
+    new_issuer: bool = Field(description="Issued by a CA this domain had not used before")
+    seen_at: datetime
+
+
+class Watch(Strict):
+    watch_id: str = Field(description="Keep this: it is the only way to read the alerts")
+    domain: str
+    created_at: datetime
+    last_checked: datetime | None = None
+    known_certificates: int
+    known_issuers: list[str]
+    alerts: list[WatchAlert] = Field(default_factory=list, description="Newest first")
+    note: str = ("New certificates found in Certificate Transparency logs since the watch started. A new certificate is "
+                 "usually routine renewal; one from a CA you don't use, or for a name you don't recognise, is worth checking.")
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):

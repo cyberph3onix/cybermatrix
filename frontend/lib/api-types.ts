@@ -273,6 +273,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Watch */
+        post: operations["create_watch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/{watch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Watch */
+        get: operations["get_watch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -903,6 +937,66 @@ export interface components {
             /** Tx Hash */
             tx_hash: string | null;
         };
+        /** Watch */
+        Watch: {
+            /**
+             * Alerts
+             * @description Newest first
+             */
+            alerts: components["schemas"]["WatchAlert"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Domain */
+            domain: string;
+            /** Known Certificates */
+            known_certificates: number;
+            /** Known Issuers */
+            known_issuers: string[];
+            /** Last Checked */
+            last_checked: string | null;
+            /**
+             * Note
+             * @default New certificates found in Certificate Transparency logs since the watch started. A new certificate is usually routine renewal; one from a CA you don't use, or for a name you don't recognise, is worth checking.
+             */
+            note: string;
+            /**
+             * Watch Id
+             * @description Keep this: it is the only way to read the alerts
+             */
+            watch_id: string;
+        };
+        /** WatchAlert */
+        WatchAlert: {
+            /** Cert Sha256 */
+            cert_sha256: string;
+            /** Dns Names */
+            dns_names: string[];
+            /** Issuer */
+            issuer: string;
+            /**
+             * New Issuer
+             * @description Issued by a CA this domain had not used before
+             */
+            new_issuer: boolean;
+            /** Not Before */
+            not_before: string | null;
+            /**
+             * Seen At
+             * Format: date-time
+             */
+            seen_at: string;
+        };
+        /** WatchRequest */
+        WatchRequest: {
+            /**
+             * Domain
+             * @description Domain to monitor in Certificate Transparency
+             */
+            domain: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1356,6 +1450,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_watch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Watch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_watch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                watch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Watch"];
                 };
             };
             /** @description Validation Error */

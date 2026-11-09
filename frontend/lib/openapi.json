@@ -1573,6 +1573,141 @@
         ],
         "title": "VerificationResult",
         "type": "object"
+      },
+      "Watch": {
+        "additionalProperties": false,
+        "properties": {
+          "alerts": {
+            "description": "Newest first",
+            "items": {
+              "$ref": "#/components/schemas/WatchAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "known_certificates": {
+            "title": "Known Certificates",
+            "type": "integer"
+          },
+          "known_issuers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Known Issuers",
+            "type": "array"
+          },
+          "last_checked": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked"
+          },
+          "note": {
+            "default": "New certificates found in Certificate Transparency logs since the watch started. A new certificate is usually routine renewal; one from a CA you don't use, or for a name you don't recognise, is worth checking.",
+            "title": "Note",
+            "type": "string"
+          },
+          "watch_id": {
+            "description": "Keep this: it is the only way to read the alerts",
+            "title": "Watch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "watch_id",
+          "domain",
+          "created_at",
+          "last_checked",
+          "known_certificates",
+          "known_issuers",
+          "alerts",
+          "note"
+        ],
+        "title": "Watch",
+        "type": "object"
+      },
+      "WatchAlert": {
+        "additionalProperties": false,
+        "properties": {
+          "cert_sha256": {
+            "title": "Cert Sha256",
+            "type": "string"
+          },
+          "dns_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dns Names",
+            "type": "array"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "new_issuer": {
+            "description": "Issued by a CA this domain had not used before",
+            "title": "New Issuer",
+            "type": "boolean"
+          },
+          "not_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Before"
+          },
+          "seen_at": {
+            "format": "date-time",
+            "title": "Seen At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cert_sha256",
+          "dns_names",
+          "issuer",
+          "not_before",
+          "new_issuer",
+          "seen_at"
+        ],
+        "title": "WatchAlert",
+        "type": "object"
+      },
+      "WatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "description": "Domain to monitor in Certificate Transparency",
+            "maxLength": 253,
+            "minLength": 3,
+            "title": "Domain",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "title": "WatchRequest",
+        "type": "object"
       }
     }
   },
@@ -2138,6 +2273,83 @@
           }
         },
         "summary": "Verify Uploaded"
+      }
+    },
+    "/watch": {
+      "post": {
+        "operationId": "create_watch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Watch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Watch"
+      }
+    },
+    "/watch/{watch_id}": {
+      "get": {
+        "operationId": "get_watch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "watch_id",
+            "required": true,
+            "schema": {
+              "title": "Watch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Watch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Watch"
       }
     }
   }

@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, Integer, LargeBinary, String
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, LargeBinary, String
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -78,6 +78,32 @@ class OwnershipRow(Base):
     grant: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True)
     method: Mapped[str | None] = mapped_column(String(8), nullable=True)
     grant_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class WatchRow(Base):
+    """A domain on the CT watchlist (app/watch.py). The id is a random token: whoever has it can read the alerts."""
+
+    __tablename__ = "ct_watches"
+
+    watch_id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(253), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    known_certs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    known_issuers: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+
+class WatchAlertRow(Base):
+    __tablename__ = "ct_watch_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    watch_id: Mapped[str] = mapped_column(ForeignKey("ct_watches.watch_id", ondelete="CASCADE"), index=True)
+    cert_sha256: Mapped[str] = mapped_column(String(64))
+    dns_names: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    issuer: Mapped[str] = mapped_column(String(256))
+    not_before: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    new_issuer: Mapped[bool] = mapped_column(Boolean, default=False)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class IntelCacheRow(Base):

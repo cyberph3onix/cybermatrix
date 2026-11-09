@@ -12,7 +12,7 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Resp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import ownership, store
+from app import ownership, store, watch
 from app.ai.cluster_summary import add_summaries
 from app.ai.explain import explain
 from app.ai.llm import LlmUnavailable
@@ -20,7 +20,7 @@ from app.ai.redact import redact
 from app.api.state import AppState
 from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters, impersonation_trends
-from app.db import DisputeReasonRow, OwnershipRow, RegistryRow
+from app.db import DisputeReasonRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
@@ -49,6 +49,9 @@ from app.schemas import (
     ReportVersion,
     SubjectType,
     VerificationResult,
+    Watch,
+    WatchAlert,
+    WatchRequest,
     utcnow,
 )
 from app.urlutil import URLParseError, parse_url
@@ -486,6 +489,44 @@ async def trends(db: Db) -> list[ImpersonationTrend]:
     kinds = dict((await db.execute(select(ReportRow.report_id, ReportRow.subject_type)
                                    .where(ReportRow.report_id.in_(ids)))).all()) if ids else {}
     return impersonation_trends(rows, kinds)
+
+
+# ---------- CT watchlist ----------
+
+async def _watch_view(db: AsyncSession, w: WatchRow) -> Watch:
+    alerts = (await db.execute(select(WatchAlertRow).where(WatchAlertRow.watch_id == w.watch_id)
+                               .order_by(WatchAlertRow.seen_at.desc(), WatchAlertRow.id.desc()).limit(100))).scalars()
+    return Watch(watch_id=w.watch_id, domain=w.domain, created_at=w.created_at, last_checked=w.last_checked,
+                 known_certificates=len(w.known_certs or []), known_issuers=sorted(w.known_issuers or []),
+                 alerts=[WatchAlert(cert_sha256=a.cert_sha256, dns_names=a.dns_names or [], issuer=a.issuer,
+                                    not_before=a.not_before, new_issuer=a.new_issuer, seen_at=a.seen_at) for a in alerts])
+
+
+@router.post("/watch", response_model=Watch, dependencies=[Depends(_limit("register_limiter"))])
+async def create_watch(req: WatchRequest, st: St, db: Db) -> Watch:
+    try:
+        domain = ownership.domain_of(req.domain)
+    except ownership.OwnershipError as e:
+        raise HTTPException(422, str(e)) from None
+    if await watch.count(st.db) >= watch.MAX_WATCHES:
+        raise HTTPException(429, "The watchlist is full on this server.")
+    wid = watch.new_token()
+    db.add(WatchRow(watch_id=wid, domain=domain, created_at=utcnow(), known_certs=[], known_issuers=[]))
+    await db.commit()
+    try:
+        await watch.poll_one(st.db, st.api, wid)  # baseline: certificates that exist today are not alerts
+    except watch.ApiUnavailable:
+        pass  # the background poll takes the baseline later
+    db.expire_all()
+    return await _watch_view(db, await db.get(WatchRow, wid))
+
+
+@router.get("/watch/{watch_id}", response_model=Watch)
+async def get_watch(watch_id: str, db: Db) -> Watch:
+    w = await db.get(WatchRow, watch_id) if re.fullmatch(r"[0-9a-f]{24}", watch_id) else None
+    if w is None:
+        raise HTTPException(404, "No watch with this ID.")
+    return await _watch_view(db, w)
 
 
 @router.get("/health")
