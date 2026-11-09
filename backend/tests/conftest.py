@@ -9,6 +9,15 @@ from app.schemas import RedirectHop
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def _isolate_env(monkeypatch, tmp_path):
+    """No real API keys and no real OpenPhish feed leak into tests, whatever the dev machine has."""
+    from app.checks.intel import openphish
+    for k in ("GSB_API_KEY", "VT_API_KEY", "URLHAUS_AUTH_KEY", "CERTSPOTTER_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(openphish, "FEED", openphish.OpenPhishFeed(tmp_path / "openphish_feed.txt"))
+
+
 @pytest.fixture
 def idx():
     return get_index()

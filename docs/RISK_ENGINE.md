@@ -153,6 +153,10 @@ Extracted URLs run through the full URL pipeline, and their findings are attache
 POSTURE.SERVER_BANNER_VERSION, POSTURE.EXPOSED_FILE` (only `/.git/HEAD`, `/.env` via a single HEAD/GET, and
 only when the user ticks "I own this site").
 
+Posture checks run as group `posture.headers` (coverage weight 0, so they never change coverage or the score).
+The `severity` on a POSTURE finding is a display hint only (low for a missing defence, info for observations).
+`POSTURE.EXPOSED_FILE` is not implemented yet: it needs the "I own this site" flag on `POST /assess`.
+
 ## 7. LLM boundaries
 
 - Allowed LLM jobs: (a) extract the claimed brand and whether the page/message seeks credentials or payment,

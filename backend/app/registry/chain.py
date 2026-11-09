@@ -18,6 +18,13 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Self
 
+from eth_account import Account
+from eth_account.signers.local import LocalAccount
+from eth_hash.auto import keccak
+from web3 import AsyncHTTPProvider, AsyncWeb3
+from web3.exceptions import ContractCustomError, ContractLogicError, TimeExhausted, Web3Exception
+from web3.logs import DISCARD
+
 from app.schemas import (
     AssessmentReport,
     RegistryRecord,
@@ -25,12 +32,6 @@ from app.schemas import (
     VerificationResult,
     report_hash,
 )
-from eth_account import Account
-from eth_account.signers.local import LocalAccount
-from eth_hash.auto import keccak
-from web3 import AsyncHTTPProvider, AsyncWeb3
-from web3.exceptions import ContractCustomError, ContractLogicError, TimeExhausted, Web3Exception
-from web3.logs import DISCARD
 
 log = logging.getLogger(__name__)
 

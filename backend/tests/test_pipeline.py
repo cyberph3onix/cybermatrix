@@ -83,7 +83,7 @@ async def test_phishing_page_r1b(pki):
     assert rep.certificate is not None and rep.certificate.ct_logged_in_crtsh is True
     assert rep.coverage.percent == 50 and rep.confidence == "medium"
     assert "intel.gsb" in rep.coverage.unavailable
-    assert any("intel.gsb unavailable: not yet integrated" in x for x in rep.limitations)
+    assert any("intel.gsb unavailable: GSB_API_KEY is not set" in x for x in rep.limitations)
     assert {i.type for i in rep.indicators} >= {"url", "domain", "ip", "cert_sha256"}
     assert len(rep.redirect_chain) == 2
 

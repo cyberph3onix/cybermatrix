@@ -35,6 +35,19 @@ in the JSON and it reports `MISMATCH`. It needs only `web3`, `rfc8785` and `eth-
 A match proves the report hasn't changed since it was registered. It does not prove the report's conclusions
 are true.
 
+## Running it
+
+```bash
+cp .env.example .env        # add GSB_API_KEY, VT_API_KEY, URLHAUS_AUTH_KEY (checks without a key report "unavailable")
+docker compose up --build   # frontend :3000, backend :8000 (OpenAPI docs at /docs), postgres
+```
+
+On-chain writes are off under compose: the backend container ignores `SEPOLIA_RPC_URL` / `RELAYER_PRIVATE_KEY` from
+`.env` (register and verify answer 503). To enable them on purpose, add `CHAIN_SEPOLIA_RPC_URL` and
+`CHAIN_RELAYER_PRIVATE_KEY` to `.env`. With those set, "Register on-chain" sends a real Sepolia transaction.
+
+After changing `backend/app/schemas.py` or any route, regenerate the frontend types: `cd frontend && npm run gen`.
+
 ## Development
 
 ```bash

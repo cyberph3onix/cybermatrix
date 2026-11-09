@@ -22,7 +22,9 @@ def utcnow() -> datetime:
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+    # json_schema_serialization_defaults_required only shapes the OpenAPI *response* schema (fields with defaults
+    # are always present in what we send), so the generated TypeScript types need no `?`. Data and hash unaffected.
+    model_config = ConfigDict(extra="forbid", use_enum_values=True, json_schema_serialization_defaults_required=True)
 
 
 # ---------- enums ----------
@@ -241,6 +243,7 @@ class VerificationResult(Strict):
 class AssessRequest(Strict):
     input: str = Field(min_length=1, max_length=20_000)
     subject_type: SubjectType | None = Field(default=None, description="Auto-detected if omitted")
+    owns_site: bool = Field(default=False, description="User confirms they own the site: allows the exposed-file posture probe")
 
 
 # ---------- canonical hashing (registry/canonical.py imports this) ----------
@@ -253,3 +256,28 @@ def canonical_bytes(report: AssessmentReport) -> bytes:
 def report_hash(report: AssessmentReport) -> str:
     from eth_hash.auto import keccak
     return "0x" + keccak(canonical_bytes(report)).hex()
+
+
+# ---------- correlation (GET /clusters) ----------
+
+class ClusterIndicator(Strict):
+    type: IndicatorType
+    value: str
+    report_count: int = Field(description="How many member reports contain this indicator")
+
+
+class Cluster(Strict):
+    cluster_id: str
+    label: str
+    first_seen: datetime
+    last_seen: datetime
+    report_ids: list[str]
+    top_classification: RiskClass
+    shared_indicators: list[ClusterIndicator]
+    member_domains: list[str]
+
+
+# ---------- API responses ----------
+
+class AssessResponse(Strict):
+    report_id: str

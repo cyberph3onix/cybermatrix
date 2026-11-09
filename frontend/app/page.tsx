@@ -9,6 +9,7 @@ export default function Home() {
   const router = useRouter();
   const [text, setText] = useState("");
   const [qr, setQr] = useState<File | null>(null);
+  const [owns, setOwns] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -24,7 +25,11 @@ export default function Home() {
     try {
       const { report_id } = qr
         ? await assessQr(qr)
-        : await assess({ input: text, subject_type: detected });
+        : await assess({
+            input: text,
+            subject_type: detected,
+            owns_site: owns && (detected === "url" || detected === "domain"),
+          });
       router.push(`/report/${report_id}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong. Try again.");
@@ -71,6 +76,21 @@ export default function Home() {
             "Nothing is sent until you press Investigate."
           )}
         </p>
+
+        {(detected === "url" || detected === "domain") && (
+          <label className="flex items-start gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={owns}
+              onChange={(e) => setOwns(e.target.checked)}
+              className="mt-1 size-4"
+            />
+            <span>
+              I own this site. Also check whether <code>/.git/HEAD</code> and <code>/.env</code> are publicly
+              readable (two extra requests to the site).
+            </span>
+          </label>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -132,18 +152,6 @@ export default function Home() {
           <li>Rules decide the risk class. The AI only explains the findings in plain language.</li>
           <li>The best result is &ldquo;low risk&rdquo;, always shown with what was and wasn&apos;t checked.</li>
         </ul>
-        <p className="mt-4 text-sm">
-          Want to see the five result types?{" "}
-          {(["low_risk", "suspicious", "high_risk", "confirmed_malicious", "inconclusive"] as const).map((c, i) => (
-            <span key={c}>
-              {i > 0 && ", "}
-              <a className="text-accent underline" href={`/report/demo-${c}`}>
-                {c.replace("_", " ")}
-              </a>
-            </span>
-          ))}
-          .
-        </p>
       </section>
     </div>
   );

@@ -67,3 +67,17 @@ POSTURE_IDS = frozenset({
     "POSTURE.NO_HSTS", "POSTURE.NO_CSP", "POSTURE.NO_XFO", "POSTURE.NO_XCTO", "POSTURE.MIXED_CONTENT",
     "POSTURE.OLD_TLS_VERSION", "POSTURE.SERVER_BANNER_VERSION", "POSTURE.EXPOSED_FILE",
 })
+
+# Posture findings never score (RISK_ENGINE.md §2) and are reported in `security_posture`. Severity is only
+# a display hint: low for a missing defence, info for observations.
+POSTURE_META: dict[str, Meta] = {
+    "POSTURE.NO_HSTS": Meta("security_posture", "low", "technical"),
+    "POSTURE.NO_CSP": Meta("security_posture", "low", "technical"),
+    "POSTURE.NO_XFO": Meta("security_posture", "low", "technical"),
+    "POSTURE.NO_XCTO": Meta("security_posture", "low", "technical"),
+    "POSTURE.MIXED_CONTENT": Meta("security_posture", "low", "technical"),
+    "POSTURE.OLD_TLS_VERSION": Meta("security_posture", "low", "technical"),
+    "POSTURE.SERVER_BANNER_VERSION": Meta("security_posture", "info", "technical"),
+    "POSTURE.EXPOSED_FILE": Meta("security_posture", "medium", "technical"),
+}
+assert set(POSTURE_META) == POSTURE_IDS

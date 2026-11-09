@@ -116,7 +116,7 @@ uv run --no-project --with-requirements verify/requirements.txt --with pytest py
 
 ## Env vars
 
-`DATABASE_URL, ANTHROPIC_API_KEY, GSB_API_KEY, VT_API_KEY, URLHAUS_AUTH_KEY, SEPOLIA_RPC_URL,
+`DATABASE_URL, GEMINI_API_KEY (or ANTHROPIC_API_KEY), GSB_API_KEY, VT_API_KEY, URLHAUS_AUTH_KEY, SEPOLIA_RPC_URL,
 RELAYER_PRIVATE_KEY, DEPLOYER_PRIVATE_KEY, REGISTRY_ADDRESS, ETHERSCAN_API_KEY, CERTSPOTTER_API_KEY (optional)`.
 Never commit `.env`. Never log keys or full messages.
 
@@ -139,5 +139,5 @@ no on-chain role. After changing the contract, run `contracts/script/export_abi.
 ## Conventions
 
 Python 3.12, FastAPI, Pydantic v2, httpx, ruff, pytest. Typed everything. Small modules. Tests use recorded
-fixtures, never live phishing URLs (they die). The runtime LLM is Claude Haiku 5.5 (`claude-haiku-5-5`), with
+fixtures, never live phishing URLs (they die). The runtime LLM is Gemini (`gemini-2.5-flash`, override with GEMINI_MODEL) when GEMINI_API_KEY is set, else Claude Haiku 5.5 (`claude-haiku-5-5`), with
 structured output validated against Pydantic.

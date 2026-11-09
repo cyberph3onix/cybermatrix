@@ -10,3 +10,4 @@ contracts/cache/
 contracts/broadcast/
 backend/data/.cache/
 KICKOFF_PROMPTS.md
+backend/data/openphish_feed.txt

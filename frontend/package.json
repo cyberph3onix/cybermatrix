@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "predev": "node scripts/sync-fixture.mjs",
-    "prebuild": "node scripts/sync-fixture.mjs",
-    "pretypecheck": "node scripts/sync-fixture.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:openapi": "cd ../backend && uv run python -m app.openapi_export ../frontend/lib/openapi.json",
+    "gen:types": "openapi-typescript lib/openapi.json -o lib/api-types.ts",
+    "gen": "npm run gen:openapi && npm run gen:types"
   },
   "dependencies": {
     "js-sha3": "^0.13.0",
@@ -25,6 +25,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

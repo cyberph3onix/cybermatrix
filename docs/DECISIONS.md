@@ -17,6 +17,20 @@ What we reused, what we borrowed as ideas, and what we deliberately left out. Re
   Roadmap: switch to `hashes.search` so only 4-byte hash prefixes leave our server, not raw URLs.
 - **URLhaus** (auth key), **OpenPhish** public feed (downloaded and matched locally, so no URL leaves the server),
   **VirusTotal** (free tier; ≥ 5 engines treated as authoritative).
+- **OpenPhish feed URL:** `openphish.com/feed.txt` now 302-redirects to `raw.githubusercontent.com/openphish/public_feed/…`.
+  Our API client never follows redirects (and treats a 3xx as a failure), so we download the target directly.
+  Refreshed on startup and every 6 h; the last file is kept if a download fails, and a feed older than 48 h
+  makes the check `unavailable` rather than silently stale.
+- **Host-level matches are gated.** URLhaus and OpenPhish also match on the host. That is skipped for
+  allowlisted (Tranco / official) and abusable hosts, because `risk.dampen` never drops threat-intel findings and
+  one malicious file on github.com would otherwise mark every GitHub URL `confirmed_malicious`. Exact-URL matches
+  always count.
+- **VirusTotal is lookup-only.** A URL VT has never seen is not submitted for scanning (that would publish it, and
+  the free tier allows 4 requests/min). A 404 is a completed check with no finding.
+- **Intel lookups cover the redirect destination too** (submitted URL first, then the final URL once the redirect
+  chain is known), so a shortener pointing at a listed page is caught. Responses are cached in Postgres for 6 h,
+  keyed by a SHA-256 of the lookup.
+- **RDAP** uses the IANA bootstrap file (cached 24 h) to find each TLD's server; only `https` servers are used.
 - **PhishTank: not used.** New registrations have been closed since 2020 and remained closed as of mid-2026.
 
 ## The eMudhra incident (Module 2)
@@ -60,3 +74,14 @@ What we reused, what we borrowed as ideas, and what we deliberately left out. Re
   real-but-urgent bank OTP messages) and report per-class results in docs/TESTING.md.
 - **URLs:** badssl.com subdomains for TLS failures, recorded OpenPhish/URLhaus entries (frozen as fixtures),
   and top Indian bank, government and university sites as benign.
+
+## LLM provider: Gemini preferred, Anthropic fallback
+The user supplied a Gemini key, so `default_llm()` picks `GeminiLlm` (REST, `responseJsonSchema`, key in the
+`x-goog-api-key` header) when `GEMINI_API_KEY` is set, else `AnthropicLlm`. Everything that makes the boundary safe
+(redaction, `<untrusted_input>`, schema validation, dropped unknown check_ids, forced heuristic strength, injection
+detection) sits outside the client, so it is unchanged. Redacted text now goes to Google instead of Anthropic.
+
+## GSB v5 responds in protobuf
+Verified live (2026-11-09): `urls:search` returns binary protobuf and rejects `alt=json` / `$alt=json` with
+"Unsupported Output Format", despite the REST docs showing JSON. `checks/intel/gsb.py` decodes the small message by
+hand (`threats` = field 1, url = 1, threat_types = 2) and still accepts JSON if Google ever serves it.

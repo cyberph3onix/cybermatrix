@@ -1,0 +1,1434 @@
+{
+  "components": {
+    "schemas": {
+      "AIExplanation": {
+        "additionalProperties": false,
+        "properties": {
+          "disclaimer": {
+            "default": "AI-generated explanation of the findings above. The classification is computed by deterministic rules, not by the AI.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "injection_attempt_detected": {
+            "default": false,
+            "title": "Injection Attempt Detected",
+            "type": "boolean"
+          },
+          "language_signals": {
+            "description": "MSG.* check_ids the LLM supported",
+            "items": {
+              "type": "string"
+            },
+            "title": "Language Signals",
+            "type": "array"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "verified_evidence_refs": {
+            "description": "check_ids from deterministic findings it relied on",
+            "items": {
+              "type": "string"
+            },
+            "title": "Verified Evidence Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model",
+          "summary",
+          "language_signals",
+          "verified_evidence_refs",
+          "injection_attempt_detected",
+          "disclaimer"
+        ],
+        "title": "AIExplanation",
+        "type": "object"
+      },
+      "AssessRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Input",
+            "type": "string"
+          },
+          "owns_site": {
+            "default": false,
+            "description": "User confirms they own the site: allows the exposed-file posture probe",
+            "title": "Owns Site",
+            "type": "boolean"
+          },
+          "subject_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubjectType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Auto-detected if omitted"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "AssessRequest",
+        "type": "object"
+      },
+      "AssessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ],
+        "title": "AssessResponse",
+        "type": "object"
+      },
+      "AssessmentReport": {
+        "additionalProperties": false,
+        "properties": {
+          "ai": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AIExplanation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "certificate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CertificateSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check_runs": {
+            "items": {
+              "$ref": "#/components/schemas/CheckRun"
+            },
+            "title": "Check Runs",
+            "type": "array"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/RiskClass"
+          },
+          "classification_reason": {
+            "description": "Rule + triggering check_ids, e.g. \"R1: URL.INTEL.GSB\"",
+            "title": "Classification Reason",
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "limitations": {
+            "description": "Always non-empty. Includes unavailable checks and fixed caveats.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "normalized_subject": {
+            "title": "Normalized Subject",
+            "type": "string"
+          },
+          "recommended_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommended Actions",
+            "type": "array"
+          },
+          "redirect_chain": {
+            "items": {
+              "$ref": "#/components/schemas/RedirectHop"
+            },
+            "title": "Redirect Chain",
+            "type": "array"
+          },
+          "related_report_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Report Ids",
+            "type": "array"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "salt": {
+            "description": "Prevents brute-forcing the on-chain hash back to the URL",
+            "title": "Salt",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": "1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          },
+          "security_posture": {
+            "description": "Module 5 hygiene findings. Never affect classification.",
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Security Posture",
+            "type": "array"
+          },
+          "subject": {
+            "description": "Raw input as submitted (redacted for messages). OFF-CHAIN ONLY.",
+            "title": "Subject",
+            "type": "string"
+          },
+          "subject_type": {
+            "$ref": "#/components/schemas/SubjectType"
+          }
+        },
+        "required": [
+          "schema_version",
+          "report_id",
+          "salt",
+          "created_at",
+          "subject_type",
+          "subject",
+          "normalized_subject",
+          "classification",
+          "classification_reason",
+          "score",
+          "confidence",
+          "coverage",
+          "findings",
+          "security_posture",
+          "check_runs",
+          "indicators",
+          "redirect_chain",
+          "certificate",
+          "ai",
+          "recommended_actions",
+          "limitations",
+          "related_report_ids"
+        ],
+        "title": "AssessmentReport",
+        "type": "object"
+      },
+      "Body_assess_qr": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG/JPEG/WebP image of a QR code",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_assess_qr",
+        "type": "object"
+      },
+      "CertificateSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_issuers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Chain Issuers",
+            "type": "array"
+          },
+          "chain_valid": {
+            "title": "Chain Valid",
+            "type": "boolean"
+          },
+          "ct_logged_in_crtsh": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ct Logged In Crtsh"
+          },
+          "ct_sct_count": {
+            "default": 0,
+            "title": "Ct Sct Count",
+            "type": "integer"
+          },
+          "days_remaining": {
+            "title": "Days Remaining",
+            "type": "integer"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "key_bits": {
+            "title": "Key Bits",
+            "type": "integer"
+          },
+          "key_type": {
+            "enum": [
+              "RSA",
+              "EC",
+              "Ed25519",
+              "other"
+            ],
+            "title": "Key Type",
+            "type": "string"
+          },
+          "not_after": {
+            "format": "date-time",
+            "title": "Not After",
+            "type": "string"
+          },
+          "not_before": {
+            "format": "date-time",
+            "title": "Not Before",
+            "type": "string"
+          },
+          "ocsp_status": {
+            "default": "unchecked",
+            "enum": [
+              "good",
+              "revoked",
+              "unknown",
+              "unchecked"
+            ],
+            "title": "Ocsp Status",
+            "type": "string"
+          },
+          "san": {
+            "items": {
+              "type": "string"
+            },
+            "title": "San",
+            "type": "array"
+          },
+          "sha256_fingerprint": {
+            "title": "Sha256 Fingerprint",
+            "type": "string"
+          },
+          "signature_algorithm": {
+            "title": "Signature Algorithm",
+            "type": "string"
+          },
+          "subject_cn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Cn"
+          },
+          "tls_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tls Version"
+          }
+        },
+        "required": [
+          "subject_cn",
+          "san",
+          "issuer",
+          "chain_issuers",
+          "not_before",
+          "not_after",
+          "days_remaining",
+          "key_type",
+          "key_bits",
+          "signature_algorithm",
+          "sha256_fingerprint",
+          "ocsp_status",
+          "ct_sct_count",
+          "ct_logged_in_crtsh",
+          "chain_valid",
+          "tls_version"
+        ],
+        "title": "CertificateSummary",
+        "type": "object"
+      },
+      "CheckRun": {
+        "additionalProperties": false,
+        "properties": {
+          "check_group": {
+            "description": "url.structure | intel.gsb | fetch.redirects | tls.chain | ...",
+            "title": "Check Group",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CheckStatus"
+          },
+          "weight": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "check_group",
+          "status",
+          "source",
+          "duration_ms",
+          "weight",
+          "detail"
+        ],
+        "title": "CheckRun",
+        "type": "object"
+      },
+      "CheckStatus": {
+        "enum": [
+          "completed",
+          "failed",
+          "unavailable",
+          "skipped"
+        ],
+        "title": "CheckStatus",
+        "type": "string"
+      },
+      "Cluster": {
+        "additionalProperties": false,
+        "properties": {
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "first_seen": {
+            "format": "date-time",
+            "title": "First Seen",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_seen": {
+            "format": "date-time",
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "member_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Member Domains",
+            "type": "array"
+          },
+          "report_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Report Ids",
+            "type": "array"
+          },
+          "shared_indicators": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterIndicator"
+            },
+            "title": "Shared Indicators",
+            "type": "array"
+          },
+          "top_classification": {
+            "$ref": "#/components/schemas/RiskClass"
+          }
+        },
+        "required": [
+          "cluster_id",
+          "label",
+          "first_seen",
+          "last_seen",
+          "report_ids",
+          "top_classification",
+          "shared_indicators",
+          "member_domains"
+        ],
+        "title": "Cluster",
+        "type": "object"
+      },
+      "ClusterIndicator": {
+        "additionalProperties": false,
+        "properties": {
+          "report_count": {
+            "description": "How many member reports contain this indicator",
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "url",
+              "domain",
+              "ip",
+              "asn",
+              "nameserver",
+              "cert_sha256",
+              "email",
+              "phone",
+              "upi_id",
+              "crypto_address"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "report_count"
+        ],
+        "title": "ClusterIndicator",
+        "type": "object"
+      },
+      "Confidence": {
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "Confidence",
+        "type": "string"
+      },
+      "Coverage": {
+        "additionalProperties": false,
+        "properties": {
+          "completed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Completed",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "percent": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Percent",
+            "type": "integer"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "unavailable": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unavailable",
+            "type": "array"
+          }
+        },
+        "required": [
+          "percent",
+          "completed",
+          "unavailable",
+          "failed",
+          "skipped"
+        ],
+        "title": "Coverage",
+        "type": "object"
+      },
+      "Evidence": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "description": "Small raw observed values. No floats.",
+            "title": "Data",
+            "type": "object"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "description": "certificate_field | http_redirect | ti_match | dns_record | rdap | html_element | text_span | ct_entry",
+            "title": "Kind",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "source": {
+            "description": "local:tls_inspector | google_safe_browsing | urlhaus | openphish | virustotal | crt.sh | rdap | llm:claude-haiku-5-5 ...",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "description",
+          "data",
+          "source",
+          "observed_at"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "EvidenceStrength": {
+        "enum": [
+          "authoritative",
+          "technical",
+          "heuristic"
+        ],
+        "title": "EvidenceStrength",
+        "type": "string"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FindingCategory"
+          },
+          "check_id": {
+            "description": "Stable ID from docs/RISK_ENGINE.md, e.g. TLS.EXPIRED",
+            "title": "Check Id",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "impact": {
+            "title": "Impact",
+            "type": "string"
+          },
+          "indicator_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Normalized indicator this finding is about (for message sub-assessments)",
+            "title": "Indicator Ref"
+          },
+          "limitation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limitation"
+          },
+          "recommendation": {
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "strength": {
+            "$ref": "#/components/schemas/EvidenceStrength"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "title",
+          "category",
+          "severity",
+          "strength",
+          "evidence",
+          "impact",
+          "recommendation",
+          "limitation",
+          "indicator_ref"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingCategory": {
+        "enum": [
+          "phishing",
+          "impersonation",
+          "redirect",
+          "threat_intel",
+          "domain",
+          "tls_trust",
+          "tls_config",
+          "social_engineering",
+          "correlation",
+          "security_posture"
+        ],
+        "title": "FindingCategory",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Indicator": {
+        "additionalProperties": false,
+        "properties": {
+          "normalized": {
+            "title": "Normalized",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "url",
+              "domain",
+              "ip",
+              "asn",
+              "nameserver",
+              "cert_sha256",
+              "email",
+              "phone",
+              "upi_id",
+              "crypto_address"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "value",
+          "normalized"
+        ],
+        "title": "Indicator",
+        "type": "object"
+      },
+      "RedirectHop": {
+        "additionalProperties": false,
+        "properties": {
+          "cross_domain": {
+            "default": false,
+            "title": "Cross Domain",
+            "type": "boolean"
+          },
+          "resolved_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Ip"
+          },
+          "status_code": {
+            "title": "Status Code",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "status_code",
+          "resolved_ip",
+          "cross_domain"
+        ],
+        "title": "RedirectHop",
+        "type": "object"
+      },
+      "RegistryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_id": {
+            "title": "Chain Id",
+            "type": "integer"
+          },
+          "contract_address": {
+            "title": "Contract Address",
+            "type": "string"
+          },
+          "onchain_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onchain Id"
+          },
+          "parent_hash": {
+            "default": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "title": "Parent Hash",
+            "type": "string"
+          },
+          "report_hash": {
+            "description": "0x-prefixed keccak256 of the canonical report",
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "reporter_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporter Address"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RegistryStatus",
+            "default": "submitted"
+          },
+          "tx_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tx Hash"
+          }
+        },
+        "required": [
+          "report_id",
+          "report_hash",
+          "parent_hash",
+          "chain_id",
+          "contract_address",
+          "onchain_id",
+          "tx_hash",
+          "reporter_address",
+          "status"
+        ],
+        "title": "RegistryRecord",
+        "type": "object"
+      },
+      "RegistryStatus": {
+        "enum": [
+          "submitted",
+          "disputed",
+          "validated",
+          "rejected",
+          "superseded"
+        ],
+        "title": "RegistryStatus",
+        "type": "string"
+      },
+      "RiskClass": {
+        "enum": [
+          "low_risk",
+          "suspicious",
+          "high_risk",
+          "confirmed_malicious",
+          "inconclusive"
+        ],
+        "title": "RiskClass",
+        "type": "string"
+      },
+      "Severity": {
+        "enum": [
+          "info",
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SubjectType": {
+        "enum": [
+          "url",
+          "domain",
+          "message",
+          "email",
+          "qr"
+        ],
+        "title": "SubjectType",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VerificationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "computed_hash": {
+            "title": "Computed Hash",
+            "type": "string"
+          },
+          "explorer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explorer Url"
+          },
+          "match": {
+            "title": "Match",
+            "type": "boolean"
+          },
+          "note": {
+            "default": "A matching hash proves this report is unchanged since it was registered. It does not prove the report's conclusions are true.",
+            "title": "Note",
+            "type": "string"
+          },
+          "onchain_created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onchain Created At"
+          },
+          "onchain_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onchain Hash"
+          },
+          "onchain_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegistryStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "tx_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tx Hash"
+          }
+        },
+        "required": [
+          "report_id",
+          "computed_hash",
+          "onchain_hash",
+          "match",
+          "onchain_status",
+          "onchain_created_at",
+          "tx_hash",
+          "explorer_url",
+          "note"
+        ],
+        "title": "VerificationResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Evidence-based web threat assessment with on-chain report registry.",
+    "title": "CyberMatrix API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/assess": {
+      "post": {
+        "operationId": "assess",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assess"
+      }
+    },
+    "/assess/qr": {
+      "post": {
+        "operationId": "assess_qr",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_assess_qr"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assess Qr"
+      }
+    },
+    "/clusters": {
+      "get": {
+        "operationId": "clusters",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Cluster"
+                  },
+                  "title": "Response Clusters",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Clusters"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/reports/{report_id}": {
+      "get": {
+        "operationId": "get_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentReport"
+                }
+              }
+            },
+            "description": "The stored canonical report, byte for byte."
+          },
+          "404": {
+            "description": "Unknown report"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report"
+      }
+    },
+    "/reports/{report_id}/register": {
+      "post": {
+        "operationId": "register",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register"
+      }
+    },
+    "/reports/{report_id}/registration": {
+      "get": {
+        "operationId": "get_registration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RegistryRecord"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Registration"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Registration"
+      }
+    },
+    "/reports/{report_id}/verify": {
+      "get": {
+        "operationId": "verify_report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Report"
+      }
+    },
+    "/verify": {
+      "post": {
+        "description": "Hash an uploaded report.json exactly as verify/verify.py does (RFC 8785 \u2192 keccak256) and look it up.",
+        "operationId": "verify_uploaded",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "description": "A report.json file, as downloaded",
+                "title": "Report",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Uploaded"
+      }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+# docker compose up --build
+#   frontend  http://localhost:3000
+#   backend   http://localhost:8000   (OpenAPI docs at /docs)
+# Secrets and API keys come from .env (copy .env.example). Without keys the matching checks report
+# "unavailable" and the coverage figure shows it.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cybermatrix
+      POSTGRES_PASSWORD: cybermatrix
+      POSTGRES_DB: cybermatrix
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cybermatrix -d cybermatrix"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cybermatrix:cybermatrix@postgres:5432/cybermatrix
+      CORS_ORIGINS: http://localhost:3000
+      # On-chain writes are OFF by default: whatever .env holds for these is overridden to empty inside the
+      # container, so "Register on-chain" cannot send a transaction. To enable it deliberately, add
+      # CHAIN_SEPOLIA_RPC_URL and CHAIN_RELAYER_PRIVATE_KEY to .env (or your shell) before `docker compose up`.
+      SEPOLIA_RPC_URL: ${CHAIN_SEPOLIA_RPC_URL:-}
+      RELAYER_PRIVATE_KEY: ${CHAIN_RELAYER_PRIVATE_KEY:-}
+      DEPLOYER_PRIVATE_KEY: ""
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Where the *browser* reaches the API.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

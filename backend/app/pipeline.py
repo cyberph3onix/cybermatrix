@@ -8,8 +8,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.brands import BrandIndex, get_index
-from app.checks import lookalike, page, redirects, tls_chain, tls_ct, url_structure
+from app.checks import domain_rdap, headers, lookalike, page, redirects, tls_chain, tls_ct, url_structure
 from app.checks.base import AssessmentContext, CheckResult, make_run
+from app.checks.intel import gsb, openphish, urlhaus, virustotal
 from app.engine import coverage as cov
 from app.engine import risk
 from app.schemas import (
@@ -44,16 +45,16 @@ CHECKS: list[CheckSpec] = [
     CheckSpec("tls.chain", tls_chain.run, 30, tls_chain.SOURCE),
     CheckSpec("tls.revocation", tls_chain.run_revocation, 40, tls_chain.SOURCE),
     CheckSpec("tls.ct", tls_ct.run, 36, "certspotter"),
+    # Intel checks look up the submitted URL at once, then wait (≤ 16 s) for the redirect chain to look up the
+    # destination too.
+    CheckSpec(gsb.GROUP, gsb.run, 30, gsb.SOURCE),
+    CheckSpec(urlhaus.GROUP, urlhaus.run, 30, urlhaus.SOURCE),
+    CheckSpec(openphish.GROUP, openphish.run, 30, openphish.SOURCE),
+    CheckSpec(virustotal.GROUP, virustotal.run, 30, virustotal.SOURCE),
+    CheckSpec(domain_rdap.GROUP, domain_rdap.run, 30, domain_rdap.SOURCE),
+    # Posture (weight 0): waits for the fetch and the TLS scan, reports into security_posture only.
+    CheckSpec(headers.GROUP, headers.run, 50, headers.SOURCE),
 ]
-
-# Groups in the coverage table that are not built yet. They count as unavailable so coverage stays honest.
-NOT_INTEGRATED = {
-    "intel.gsb": "google_safe_browsing",
-    "intel.urlhaus": "urlhaus",
-    "intel.openphish": "openphish",
-    "intel.virustotal": "virustotal",
-    "domain.rdap": "rdap",
-}
 
 FIXED_LIMITATIONS = [
     "Absence of threat-intel listings does not prove safety.",
@@ -91,6 +92,7 @@ class Deps:
     fetcher: Callable | None = None
     tls_scanner: Callable | None = None
     api: object | None = None
+    cache: object | None = None
     checks: list[CheckSpec] = field(default_factory=lambda: list(CHECKS))
 
 
@@ -114,7 +116,8 @@ async def warm_up() -> None:
     await asyncio.to_thread(_warm)
 
 
-async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None = None) -> AssessmentReport:
+async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None = None,
+                     owns_site: bool = False) -> AssessmentReport:
     deps = deps or Deps()
     now = now or utcnow()
     brands = deps.brands or get_index()
@@ -125,7 +128,7 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
     await warm_up()
 
     ctx = AssessmentContext(url=parsed, brands=brands, now=now, fetcher=deps.fetcher, tls_scanner=deps.tls_scanner,
-                            api=deps.api)
+                            api=deps.api, cache=deps.cache, owns_site=owns_site)
     try:
         results = await asyncio.gather(*(run_check(s, ctx) for s in deps.checks))
     finally:
@@ -139,9 +142,8 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
     for group in cov.WEIGHTS:  # every coverage group gets a run, so gaps always show up in limitations
         if group not in ran:
             runs.append(CheckRun(check_group=group, status=CheckStatus.UNAVAILABLE,
-                                 source=NOT_INTEGRATED.get(group, "local:pipeline"), duration_ms=0,
-                                 weight=cov.weight(group),
-                                 detail="not yet integrated" if group in NOT_INTEGRATED else "not run"))
+                                 source="local:pipeline", duration_ms=0, weight=cov.weight(group),
+                                 detail="not run"))
 
     # Re-run structural checks on the final URL (that is what "always expand shorteners" is for).
     fr = None
@@ -202,7 +204,7 @@ async def assess_url(url: str, *, now: datetime | None = None, deps: Deps | None
         findings=findings,
         security_posture=posture,
         check_runs=runs,
-        indicators=_indicators(parsed, fr, certificate),
+        indicators=_indicators(parsed, fr, certificate, ctx.nameservers),
         redirect_chain=list(fr.hops) if fr else [],
         certificate=certificate,
         ai=None,
@@ -222,7 +224,7 @@ def _post_process(findings: list[Finding]) -> list[Finding]:
     return out
 
 
-def _indicators(parsed, fr, certificate) -> list[Indicator]:
+def _indicators(parsed, fr, certificate, nameservers=()) -> list[Indicator]:
     out: list[Indicator] = [
         Indicator(type="url", value=parsed.raw, normalized=parsed.url_without_userinfo()),
     ]
@@ -247,6 +249,8 @@ def _indicators(parsed, fr, certificate) -> list[Indicator]:
             if h.resolved_ip and ("ip", h.resolved_ip) not in seen:
                 seen.add(("ip", h.resolved_ip))
                 out.append(Indicator(type="ip", value=h.resolved_ip, normalized=h.resolved_ip))
+    for ns in nameservers:
+        out.append(Indicator(type="nameserver", value=ns, normalized=ns))
     if certificate is not None:
         out.append(Indicator(type="cert_sha256", value=certificate.sha256_fingerprint,
                              normalized=certificate.sha256_fingerprint))
