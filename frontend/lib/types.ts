@@ -38,3 +38,4 @@ export type DisputeInfo = S["DisputeInfo"];
 export type DisputePrepared = S["DisputePrepared"];
 export type OwnershipChallenge = S["OwnershipChallenge"];
 export type OwnershipGrant = S["OwnershipGrant"];
+export type ImpersonationTrend = S["ImpersonationTrend"];

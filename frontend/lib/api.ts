@@ -8,6 +8,7 @@ import type {
   AssessmentReport,
   Cluster,
   DisputePrepared,
+  ImpersonationTrend,
   OwnershipChallenge,
   OwnershipGrant,
   RegistryRecord,
@@ -143,4 +144,9 @@ export async function ownershipChallenge(target: string): Promise<OwnershipChall
 
 export async function ownershipVerify(challenge: string): Promise<OwnershipGrant> {
   return request("/ownership/verify", json("POST", { challenge }), 45_000);
+}
+
+/** Brands that several suspicious reports impersonate (recurring impersonation patterns). */
+export async function getImpersonationTrends(): Promise<ImpersonationTrend[]> {
+  return request("/trends/impersonation");
 }

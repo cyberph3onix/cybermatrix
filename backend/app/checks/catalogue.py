@@ -66,6 +66,7 @@ CATALOGUE: dict[str, Meta] = {
     "CORR.VALIDATED_MATCH": Meta("correlation", "critical", "authoritative"),
     "CORR.PRIOR_REPORTS": Meta("correlation", "medium", "heuristic"),
     "CORR.SHARED_INFRA": Meta("correlation", "low", "heuristic"),
+    "CORR.SIMILAR_MESSAGE": Meta("correlation", "low", "heuristic"),
 }
 
 POSTURE_IDS = frozenset({

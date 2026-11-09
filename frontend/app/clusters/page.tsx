@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getClusters } from "@/lib/api";
+import { getClusters, getImpersonationTrends } from "@/lib/api";
 import { CLASS_STYLE } from "@/lib/classes";
-import type { Cluster } from "@/lib/types";
+import type { Cluster, ImpersonationTrend } from "@/lib/types";
 
 const TYPE_LABEL: Record<string, string> = {
   ip: "IP address",
@@ -17,6 +17,7 @@ const TYPE_LABEL: Record<string, string> = {
   crypto_address: "Crypto address",
   asn: "ASN",
   url: "URL",
+  message_family: "Message wording",
 };
 
 const day = (s: string) => new Date(s).toLocaleDateString(undefined, { dateStyle: "medium" });
@@ -24,9 +25,11 @@ const day = (s: string) => new Date(s).toLocaleDateString(undefined, { dateStyle
 export default function ClustersPage() {
   const [clusters, setClusters] = useState<Cluster[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [trends, setTrends] = useState<ImpersonationTrend[]>([]);
 
   useEffect(() => {
     getClusters().then(setClusters).catch(() => setErr("Couldn't load clusters. Reload to try again."));
+    getImpersonationTrends().then(setTrends).catch(() => {});
   }, []);
 
   return (
@@ -36,6 +39,26 @@ export default function ClustersPage() {
         Reports that share infrastructure or contact details are grouped here. A shared indicator
         suggests a common operator, but it is a lead, not proof.
       </p>
+
+      {trends.length > 0 && (
+        <section aria-labelledby="trends" className="mt-8">
+          <h2 id="trends" className="text-lg font-semibold">Most impersonated brands</h2>
+          <p className="mt-1 max-w-prose text-sm text-muted">
+            Brands that suspicious reports on this server pretend to be. Counted from findings, not guessed.
+          </p>
+          <ul className="mt-3 divide-y divide-rule rounded-md border border-rule bg-panel text-sm">
+            {trends.map((t) => (
+              <li key={t.brand_id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2">
+                <span className="min-w-0 flex-1 font-medium">{t.brand}</span>
+                <span>
+                  {t.reports} reports ({t.links} links, {t.messages} messages)
+                </span>
+                <span className="text-xs text-muted">last {day(t.last_seen)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {err && <p role="alert" className="mt-6 text-c-mal-ink">{err}</p>}
       {!clusters && !err && <p role="status" className="mt-6 text-muted">Loading clusters…</p>}
@@ -74,8 +97,12 @@ export default function ClustersPage() {
                     ))}
                   </ul>
 
-                  <h3 className="mt-4 text-sm font-semibold">Domains seen</h3>
-                  <p className="mt-1 break-all font-mono text-xs sm:text-sm">{c.member_domains.join(", ")}</p>
+                  {c.member_domains.length > 0 && (
+                    <>
+                      <h3 className="mt-4 text-sm font-semibold">Domains seen</h3>
+                      <p className="mt-1 break-all font-mono text-xs sm:text-sm">{c.member_domains.join(", ")}</p>
+                    </>
+                  )}
 
                   <p className="mt-4 text-sm">
                     Reports:{" "}

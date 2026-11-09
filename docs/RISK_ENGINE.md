@@ -154,6 +154,7 @@ Signal regexes run on redacted text with the placeholders blanked, so a masked n
 | CORR.VALIDATED_MATCH | correlation | critical | authoritative | Shares an indicator with an on-chain report in `Validated` status |
 | CORR.PRIOR_REPORTS | correlation | medium | heuristic | Shares indicator(s) with ≥ 2 prior unvalidated reports |
 | CORR.SHARED_INFRA | correlation | low | heuristic | Same IP/ASN/nameserver/cert as a prior suspicious report |
+| CORR.SIMILAR_MESSAGE | correlation | low | heuristic | Message template (links, numbers, amounts tokenised) ≥ 60% Jaccard (word 3-shingles) with a stored suspicious-or-worse message |
 
 Implementation (`correlation/checks.py`), deliberately conservative so a legitimate site is never dragged down:
 only prior reports at `suspicious` or worse count; allowlisted domains and shorteners never correlate; IP, ASN,

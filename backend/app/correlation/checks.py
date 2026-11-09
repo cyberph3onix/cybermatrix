@@ -16,9 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.brands import BrandIndex, get_index
 from app.checks.base import evidence, make_finding
+from app.correlation import similarity
 from app.db import IndicatorRow, RegistryRow, ReportRow
 from app.engine import risk
-from app.schemas import AssessmentReport, Coverage, Finding, RiskClass
+from app.schemas import AssessmentReport, Coverage, Finding, Indicator, RiskClass, SubjectType
 
 SOURCE = "local:correlation"
 SPECIFIC = ("domain", "email", "phone", "upi_id", "crypto_address")
@@ -106,11 +107,54 @@ async def correlation_findings(db: AsyncSession, report: AssessmentReport, idx: 
     return findings, list(dict.fromkeys(related))[:10]
 
 
+async def similar_messages(db: AsyncSession, report: AssessmentReport) -> tuple[str, list[tuple[str, int]]]:
+    """(message_family, [(report_id, similarity %)]) against recent suspicious-or-worse messages, most similar first."""
+    own = similarity.shingles(report.subject)
+    family = similarity.template_hash(report.subject)
+    if len(own) < similarity.MIN_SHINGLES:
+        return family, []
+    q = (select(ReportRow).where(ReportRow.subject_type == SubjectType.MESSAGE.value, ReportRow.classification.in_(BAD),
+                                 ReportRow.report_id != report.report_id)
+         .order_by(ReportRow.created_at.desc()).limit(similarity.RECENT_LIMIT))
+    hits: list[tuple[int, str, str]] = []
+    for row in (await db.execute(q)).scalars():
+        prior = AssessmentReport.model_validate_json(row.canonical)
+        pct = similarity.jaccard_pct(own, similarity.shingles(prior.subject))
+        if pct >= similarity.SIMILAR:
+            fam = next((i.normalized for i in prior.indicators if i.type == "message_family"),
+                       similarity.template_hash(prior.subject))
+            hits.append((pct, row.report_id, fam))
+    hits.sort(key=lambda h: -h[0])
+    return (hits[0][2] if hits else family), [(rid, pct) for pct, rid, _ in hits[:MAX_IDS]]
+
+
+def _similar_finding(matches: list[tuple[str, int]]) -> Finding:
+    ids = [r for r, _ in matches]
+    return make_finding(
+        "CORR.SIMILAR_MESSAGE", f"Wording matches {len(ids)} earlier suspicious message(s)",
+        [evidence("text_similarity", f"Up to {matches[0][1]}% of the message's phrasing matches {len(ids)} stored suspicious "
+                  "report(s), ignoring links, numbers and amounts.", SOURCE,
+                  {"matching_reports": len(ids), "report_ids": ids, "best_similarity_pct": matches[0][1]})],
+        "Scam campaigns reuse the same text with different links or numbers.",
+        "Treat it as part of the same campaign: do not use its links or numbers.", limitation=LIMITATION)
+
+
 async def apply_correlation(db: AsyncSession, report: AssessmentReport) -> AssessmentReport:
-    """Add CORR findings, then re-run the deterministic classifier over all findings. No-op without matches."""
+    """Add derived indicators (brand_claimed, message_family) and CORR findings, then re-run the deterministic
+    classifier over all findings."""
     from app.pipeline import ACTIONS  # local import: pipeline imports engine, not correlation
 
-    extra, related = await correlation_findings(db, report)
+    idx = get_index()
+    derived: list[Indicator] = similarity.brand_indicators(report, idx)
+    extra, related = await correlation_findings(db, report, idx)
+    if str(getattr(report.subject_type, "value", report.subject_type)) == SubjectType.MESSAGE.value:
+        family, similar = await similar_messages(db, report)
+        derived.append(Indicator(type="message_family", value=family[:12], normalized=family))
+        if similar:
+            extra.append(_similar_finding(similar))
+            related += [r for r, _ in similar]
+    have = {(i.type, i.normalized) for i in report.indicators}
+    report = report.model_copy(update={"indicators": report.indicators + [i for i in derived if (i.type, i.normalized) not in have]})
     if not extra:
         return report
     findings = report.findings + extra
@@ -118,6 +162,7 @@ async def apply_correlation(db: AsyncSession, report: AssessmentReport) -> Asses
     v = risk.classify(findings, cov.percent)
     return report.model_copy(update={
         "findings": findings, "classification": RiskClass(v.classification).value, "classification_reason": v.reason,
-        "score": v.score, "confidence": str(getattr(v.confidence, "value", v.confidence)), "related_report_ids": related,
+        "score": v.score, "confidence": str(getattr(v.confidence, "value", v.confidence)),
+        "related_report_ids": list(dict.fromkeys(related))[:10],
         "recommended_actions": ACTIONS[RiskClass(v.classification)],
         "limitations": report.limitations + [LIMITATION]})

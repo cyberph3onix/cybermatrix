@@ -96,6 +96,7 @@ class RegistryStatus(str, Enum):  # mirrors ThreatRegistry.Status
 IndicatorType = Literal[
     "url", "domain", "ip", "asn", "nameserver", "cert_sha256",
     "email", "phone", "upi_id", "crypto_address",
+    "message_family", "brand_claimed",
 ]
 
 
@@ -355,6 +356,17 @@ class Cluster(Strict):
     member_domains: list[str]
     summary: str | None = Field(default=None, description="Two-sentence AI-written description; null when no LLM is configured")
     summary_model: str | None = None
+
+
+class ImpersonationTrend(Strict):
+    brand_id: str
+    brand: str
+    reports: int = Field(description="Stored reports at suspicious or worse that impersonate this brand")
+    messages: int
+    links: int
+    first_seen: datetime
+    last_seen: datetime
+    report_ids: list[str] = Field(description="Most recent first, at most 10")
 
 
 # ---------- API responses ----------

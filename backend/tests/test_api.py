@@ -358,3 +358,10 @@ def test_messages_cannot_be_reassessed(client):
     rid = assess(client, "URGENT your SBI account is blocked, share OTP now")
     client.post(f"/reports/{rid}/register")
     assert client.post(f"/reports/{rid}/reassess").status_code == 422
+
+
+def test_impersonation_trends_endpoint(client):
+    for _ in range(2):
+        assess(client)  # the SBI clone, twice
+    trends = client.get("/trends/impersonation").json()
+    assert trends and trends[0]["brand_id"] == "sbi" and trends[0]["reports"] >= 2 and trends[0]["links"] >= 2

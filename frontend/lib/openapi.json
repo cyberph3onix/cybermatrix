@@ -578,7 +578,9 @@
               "email",
               "phone",
               "upi_id",
-              "crypto_address"
+              "crypto_address",
+              "message_family",
+              "brand_claimed"
             ],
             "title": "Type",
             "type": "string"
@@ -910,6 +912,62 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ImpersonationTrend": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "title": "Brand",
+            "type": "string"
+          },
+          "brand_id": {
+            "title": "Brand Id",
+            "type": "string"
+          },
+          "first_seen": {
+            "format": "date-time",
+            "title": "First Seen",
+            "type": "string"
+          },
+          "last_seen": {
+            "format": "date-time",
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "links": {
+            "title": "Links",
+            "type": "integer"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "report_ids": {
+            "description": "Most recent first, at most 10",
+            "items": {
+              "type": "string"
+            },
+            "title": "Report Ids",
+            "type": "array"
+          },
+          "reports": {
+            "description": "Stored reports at suspicious or worse that impersonate this brand",
+            "title": "Reports",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brand_id",
+          "brand",
+          "reports",
+          "messages",
+          "links",
+          "first_seen",
+          "last_seen",
+          "report_ids"
+        ],
+        "title": "ImpersonationTrend",
+        "type": "object"
+      },
       "Indicator": {
         "additionalProperties": false,
         "properties": {
@@ -928,7 +986,9 @@
               "email",
               "phone",
               "upi_id",
-              "crypto_address"
+              "crypto_address",
+              "message_family",
+              "brand_claimed"
             ],
             "title": "Type",
             "type": "string"
@@ -2013,6 +2073,29 @@
           }
         },
         "summary": "Verify Report"
+      }
+    },
+    "/trends/impersonation": {
+      "get": {
+        "description": "Recurring impersonation: which brands suspicious reports on this server pretend to be.",
+        "operationId": "trends",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImpersonationTrend"
+                  },
+                  "title": "Response Trends",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Trends"
       }
     },
     "/verify": {

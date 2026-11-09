@@ -19,7 +19,7 @@ from app.ai.llm import LlmUnavailable
 from app.ai.redact import redact
 from app.api.state import AppState
 from app.correlation.checks import apply_correlation
-from app.correlation.clusters import build_clusters
+from app.correlation.clusters import build_clusters, impersonation_trends
 from app.db import DisputeReasonRow, OwnershipRow, RegistryRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
@@ -37,6 +37,7 @@ from app.schemas import (
     DisputeInfo,
     DisputePrepared,
     DisputeReasonRequest,
+    ImpersonationTrend,
     OwnershipChallenge,
     OwnershipChallengeRequest,
     OwnershipGrant,
@@ -458,6 +459,17 @@ async def verify_uploaded(request: Request, st: St, db: Db,
 async def clusters(st: St, db: Db) -> list[Cluster]:
     built = build_clusters(await store.indicator_rows(db))
     return await add_summaries(st.llm, built, st.cluster_summaries)
+
+
+@router.get("/trends/impersonation", response_model=list[ImpersonationTrend])
+async def trends(db: Db) -> list[ImpersonationTrend]:
+    """Recurring impersonation: which brands suspicious reports on this server pretend to be."""
+    from app.db import ReportRow
+    rows = await store.indicator_rows(db)
+    ids = {r[0] for r in rows if r[1] == "brand_claimed"}
+    kinds = dict((await db.execute(select(ReportRow.report_id, ReportRow.subject_type)
+                                   .where(ReportRow.report_id.in_(ids)))).all()) if ids else {}
+    return impersonation_trends(rows, kinds)
 
 
 @router.get("/health")

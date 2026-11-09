@@ -46,7 +46,7 @@ backend/app/
   main.py, api/                 routes: POST /assess, GET /reports/{id}, POST /reports/{id}/register,
                                 GET /reports/{id}/verify, GET /clusters, POST /assess/qr,
                                 GET /reports/{id}/history, POST /reports/{id}/dispute-reason, POST /reports/{id}/reassess,
-                                POST /ownership/challenge, POST /ownership/verify
+                                POST /ownership/challenge, POST /ownership/verify, GET /trends/impersonation
   schemas.py                    THE data contract — do not change shape without updating frontend types
   fetch/safe_fetch.py, fetch/api_client.py
   checks/url_structure.py, lookalike.py, redirects.py, page.py, domain_rdap.py,

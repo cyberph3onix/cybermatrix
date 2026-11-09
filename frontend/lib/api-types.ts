@@ -233,6 +233,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trends/impersonation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trends
+         * @description Recurring impersonation: which brands suspicious reports on this server pretend to be.
+         */
+        get: operations["trends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/verify": {
         parameters: {
             query?: never;
@@ -492,7 +512,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "url" | "domain" | "ip" | "asn" | "nameserver" | "cert_sha256" | "email" | "phone" | "upi_id" | "crypto_address";
+            type: "url" | "domain" | "ip" | "asn" | "nameserver" | "cert_sha256" | "email" | "phone" | "upi_id" | "crypto_address" | "message_family" | "brand_claimed";
             /** Value */
             value: string;
         };
@@ -631,6 +651,37 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** ImpersonationTrend */
+        ImpersonationTrend: {
+            /** Brand */
+            brand: string;
+            /** Brand Id */
+            brand_id: string;
+            /**
+             * First Seen
+             * Format: date-time
+             */
+            first_seen: string;
+            /**
+             * Last Seen
+             * Format: date-time
+             */
+            last_seen: string;
+            /** Links */
+            links: number;
+            /** Messages */
+            messages: number;
+            /**
+             * Report Ids
+             * @description Most recent first, at most 10
+             */
+            report_ids: string[];
+            /**
+             * Reports
+             * @description Stored reports at suspicious or worse that impersonate this brand
+             */
+            reports: number;
+        };
         /** Indicator */
         Indicator: {
             /** Normalized */
@@ -639,7 +690,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "url" | "domain" | "ip" | "asn" | "nameserver" | "cert_sha256" | "email" | "phone" | "upi_id" | "crypto_address";
+            type: "url" | "domain" | "ip" | "asn" | "nameserver" | "cert_sha256" | "email" | "phone" | "upi_id" | "crypto_address" | "message_family" | "brand_claimed";
             /** Value */
             value: string;
         };
@@ -1259,6 +1310,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trends: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpersonationTrend"][];
                 };
             };
         };
