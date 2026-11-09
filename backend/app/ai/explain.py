@@ -22,7 +22,9 @@ _PRODUCT = re.compile(r"\bsafe\s+browsing\b", re.IGNORECASE)  # "Google Safe Bro
 _REASSURE = re.compile(
     r"\b(?:legit(?:imate)?|trust(?:worthy|ed)|genuine|authentic|harmless|benign|no (?:real )?(?:risk|threat|danger)|"
     r"(?:nothing|no need) to worry|not (?:a )?(?:scam|phishing|risky|dangerous|malicious)|fine to (?:use|visit|open)|"
-    r"go ahead|you can (?:log ?in|sign ?in|proceed|continue|trust|enter))\b", re.IGNORECASE)
+    r"go ahead|you can (?:log ?in|sign ?in|proceed|continue|trust|enter)|"
+    r"(?:is|are|looks?|seems?|appears?)(?: to be)?(?: (?:completely|totally|perfectly|fully|very|quite))? (?:secure|clean)|"
+    r"(?:secure|clean) (?:site|website|page|link|message))\b", re.IGNORECASE)
 INJECTION_NOTE = " This content contained instructions directed at automated systems; they were ignored."
 
 
