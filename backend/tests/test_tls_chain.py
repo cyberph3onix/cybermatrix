@@ -1,4 +1,5 @@
-from datetime import timedelta
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -141,6 +142,59 @@ def test_real_sectigo_cross_sign_matches():
     cert = load(xs[0])[0]
     assert tc.spki_sha256(cert) == tc.spki_sha256(load(EMUDHRA_EV_G3B)[0])
     assert "TLS.DISTRUSTED_CA" in {f.check_id for f in tc.analyze(scan_of([cert]), NOW)[0]}
+
+
+DISTRUST_DOC = json.loads((Path(tc.DATA_DIR) / "distrusted_cas.json").read_text())
+EMUDHRA_DIR = CERTS / "emudhra"
+
+
+def test_distrust_list_invariant_eight_keys():
+    """8 original intermediates, 8 distinct keys; every other entry re-uses one of those 8 keys."""
+    entries = DISTRUST_DOC["entries"]
+    originals = {e["name"]: e for e in entries if e["relation"] == "original"}
+    assert len(originals) == 8
+    orig_spkis = {e["spki_sha256"] for e in originals.values()}
+    assert len(orig_spkis) == 8
+    assert len({e["spki_sha256"] for e in entries}) == 8
+    for e in entries:
+        assert e["spki_sha256"] in orig_spkis, e["name"]
+        assert e["spki_sha256"] == originals[e["derived_from"]]["spki_sha256"], e["name"]
+    assert len({e["cert_sha256"] for e in entries}) == len(entries)
+
+
+def test_distrust_list_provenance():
+    for e in DISTRUST_DOC["entries"]:
+        assert isinstance(e["crt_sh_id"], int) and e["crt_sh_id"] > 0, e["name"]
+        assert e["derived_from"] and e["relation"] in ("original", "cross_sign", "reissue"), e["name"]
+        assert datetime.fromisoformat(e["fetched_at"].replace("Z", "+00:00")).tzinfo is not None, e["name"]
+        assert (e["relation"] == "original") == (e["derived_from"] == e["name"]), e["name"]
+
+
+def test_every_entry_has_a_matching_fixture():
+    by_hash = {tc.cert_sha256(c): (p, c) for p in EMUDHRA_DIR.glob("*.pem") for c in load(p)}
+    for e in DISTRUST_DOC["entries"]:
+        assert e["cert_sha256"] in by_hash, f"no fixture for {e['name']}"
+        assert tc.spki_sha256(by_hash[e["cert_sha256"]][1]) == e["spki_sha256"]
+    roots = {h for r in DISTRUST_DOC["removed_roots"] for h in r["cert_sha256"]}
+    assert set(by_hash) == {e["cert_sha256"] for e in DISTRUST_DOC["entries"]} | roots, "unexplained fixture"
+
+
+def test_real_reissue_matches_by_spki_alone(pki, monkeypatch):
+    """The emSign Root TLS CA - G3 re-issue of DV G3B still fires when its cert hash is NOT on the list."""
+    reissue = next(e for e in DISTRUST_DOC["entries"] if e["relation"] == "reissue")
+    path = next(EMUDHRA_DIR.glob(f"*__reissue_{reissue['crt_sh_id']}.pem"))
+    cert = load(path)[0]
+    assert tc.cert_sha256(cert) == reissue["cert_sha256"]
+    dl = tc.distrust_list()
+    stripped = tc.DistrustList({h: n for h, n in dl.cert_hashes.items() if h != reissue["cert_sha256"]},
+                               dict(dl.spki_hashes), dl.removed_roots)
+    monkeypatch.setattr(tc, "distrust_list", lambda: stripped)
+    ca, key = pki
+    leaf, _ = make_leaf(ca, key)
+    f = next(f for f in tc.analyze(scan_of([leaf, cert]), NOW)[0] if f.check_id == "TLS.DISTRUSTED_CA")
+    assert f.evidence[0].data["match"] == "spki_sha256"
+    assert f.severity == "critical"
+    assert f.evidence[0].data["name"] == reissue["derived_from"]
 
 
 def test_removed_root_only_is_high_not_critical(pki):

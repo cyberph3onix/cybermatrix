@@ -138,7 +138,7 @@ def distrust_list() -> DistrustList:
         if e.get("cert_sha256"):
             certs[e["cert_sha256"].upper()] = e["name"]
         if e.get("spki_sha256"):
-            spkis[e["spki_sha256"].upper()] = e.get("cross_sign_of") or e["name"]
+            spkis[e["spki_sha256"].upper()] = e.get("derived_from") or e["name"]
     return DistrustList(certs, spkis, doc.get("removed_roots", []))
 
 
