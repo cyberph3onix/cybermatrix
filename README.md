@@ -11,6 +11,7 @@ without trusting our backend.
 | Contract (v3) | [`0x5De4Cd6F651A4D80ddA16fc70431dd669621BeeA`](https://sepolia.etherscan.io/address/0x5de4cd6f651a4d80dda16fc70431dd669621beea#code) (source verified) |
 | Deploy tx | [`0xbdf33b29…bb3b`](https://sepolia.etherscan.io/tx/0xbdf33b29c1e6d07e0eb41d5742d924f21444c5c1817857d3c1c77d4ca507bb3b), block 12099038 |
 | Sample report registration | [`0x08d6c9ef…37c5`](https://sepolia.etherscan.io/tx/0x08d6c9ef458d86e87121774a2c57439855f76b8b918ab6275e4733aee44237c5) (report #1), validated in [`0xab1eef21…36c0`](https://sepolia.etherscan.io/tx/0xab1eef2179649bfc7f8d32d31b3594f9a4cad7d1c5806f24dc0714dfc05c36c0) |
+| Dispute + resolution | report #2 disputed in [`0x2ac133a3…cd8a`](https://sepolia.etherscan.io/tx/0x2ac133a3678fd312b7d48de477e411346afa92f12c2bb0c763df5edafad0cd8a), validated in [`0x98b5683f…c7d8`](https://sepolia.etherscan.io/tx/0x98b5683ff793987e27041be7502791d3abb8e9cf5f6e21ebc335939e3752c7d8) |
 | Dispute bond | 0.001 Sepolia ETH |
 
 Only the report hash, parent hash, status, timestamps and reporter address are stored on-chain. URLs, messages
@@ -57,6 +58,9 @@ On-chain writes are off under compose: the backend container ignores `SEPOLIA_RP
 For a repeatable demo without live feeds, `cd backend && uv run python -m demo.seed` loads recorded example reports
 (see docs/TESTING.md).
 
+Full live demo from a fresh database (resets the compose Postgres volume, loads the recorded fixtures as a fallback,
+then runs the brief's test cases live; about 70 s): `scripts/demo.sh`.
+
 After changing `backend/app/schemas.py` or any route, regenerate the frontend types: `cd frontend && npm run gen`.
 
 ## Browser extension
@@ -83,3 +87,7 @@ uv run --no-project --with-requirements verify/requirements.txt --with pytest py
 ```
 
 Design notes are in `docs/` (risk engine rules, library decisions).
+
+## Licence
+
+MIT, see [LICENSE](LICENSE).

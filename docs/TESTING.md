@@ -27,8 +27,10 @@ cd backend && uv run pytest -q -m live          # TLS and CT tests against badss
 ```
 
 Known-bad test URL for demos: `https://testsafebrowsing.appspot.com/s/phishing.html` (Google's own test page).
-Free Gemini quotas are small and per model (2.5 Flash-Lite: 20 requests/day as of 2026-11). The client tries
-`gemini-3.5-flash-lite`, then `gemini-2.5-flash-lite`, then `gemini-flash-lite-latest`, moving on when one returns 429 or 404
+Free Gemini quotas are small and per model (we hit 429s after a few dozen requests in a day; Google lists current limits
+only inside AI Studio). The client tries `gemini-3.5-flash-lite`, then `gemini-2.5-flash-lite` (both listed on
+[Google's model page](https://aistudio.google.com/docs/models)), then `gemini-flash-lite-latest` (not a documented alias;
+expect a 404, which is skipped), moving on when one returns 429 or 404
 (`GEMINI_MODEL` takes your own comma-separated list). When every quota runs out the AI parts show as unavailable,
 with the HTTP status, and everything else keeps working.
 
@@ -89,6 +91,8 @@ wrong on reading were not sampled. Result: 25/25 fraud flagged, 0/30 legit flagg
 rules, so it is a regression test (`test_eval_sample_stays_accurate`), not a measure of accuracy.**
 
 **Held-out (every other labelled row, 528 messages, never read while tuning):**
+(Not re-run on 2026-11-10: the full corpus file is not in the repository. The 50-message sample was re-run; see
+`docs/evidence/test_runs.json`.)
 `uv run python -m eval.scamshield --corpus sms_fraud_classification.json`
 
 | Fraud type | Flagged |

@@ -1,0 +1,242 @@
+{
+ "note": "Observed results, not edited. Produced by backend/demo/live.py against a fresh database (docker compose), real API keys.",
+ "cases": [
+  {
+   "id": "S1-message",
+   "group": "suspicious",
+   "what": "scam SMS: bank impersonation + urgency + listed link",
+   "input": "URGENT: Dear SBI customer, your YONO account will be blocked today. Update your KYC at https://testsafebrowsing.appspot.com/s/phishing.html or call [PHONE].",
+   "report_id": "b532ba91-82c1-44a3-b26a-125241315b5e",
+   "created_at": "2026-11-09T20:56:56Z",
+   "classification": "confirmed_malicious",
+   "score": 100,
+   "rule": "R1: URL.INTEL.GSB + URL.INTEL.VT_MAJORITY",
+   "coverage": 100,
+   "confidence": "high",
+   "report_hash": "0x3df3aaff67effeb500e5fef61b392391b597268a999a6552cd34303f6eea70b9",
+   "check_ids": [
+    "MSG.AUTHORITY_IMPERSONATION",
+    "MSG.CREDENTIAL_REQUEST",
+    "MSG.SCAM_PATTERN",
+    "MSG.URGENCY",
+    "URL.INTEL.GSB",
+    "URL.INTEL.VT_MAJORITY"
+   ],
+   "unavailable": [],
+   "expected": "suspicious_or_worse",
+   "outcome": "correct",
+   "seconds": 27.2
+  },
+  {
+   "id": "S2-tls",
+   "group": "suspicious",
+   "what": "TLS: expired certificate (badssl.com test host)",
+   "input": "https://expired.badssl.com/",
+   "report_id": "6579e1be-71bc-4bb4-aaa3-a029e040aba3",
+   "created_at": "2026-11-09T20:57:23Z",
+   "classification": "suspicious",
+   "score": 25,
+   "rule": "R3: TLS.EXPIRED",
+   "coverage": 95,
+   "confidence": "medium",
+   "report_hash": "0x4762e8b81e37aa2df2b22e9e1519915716d7f5f3ea9a59d9ea3bb992e2767c9a",
+   "check_ids": [
+    "TLS.EXPIRED"
+   ],
+   "unavailable": [
+    "tls.revocation"
+   ],
+   "expected": "suspicious_or_worse",
+   "outcome": "correct",
+   "seconds": 6.4
+  },
+  {
+   "id": "S3-lookalike",
+   "group": "suspicious",
+   "what": "lookalike of SBI on an abuse-heavy TLD (invented name, does not resolve)",
+   "input": "https://sbi-yono-kyc-verify.top/login",
+   "report_id": "6e673c65-1007-4bd3-8bdc-524188ca7742",
+   "created_at": "2026-11-09T20:57:29Z",
+   "classification": "suspicious",
+   "score": 16,
+   "rule": "R3: URL.LOOKALIKE.TYPOSQUAT",
+   "coverage": 57,
+   "confidence": "medium",
+   "report_hash": "0xcbf3563168c749ddab39363c883ac70a6e3d851e53f4efa35f91bf8f614b6bf0",
+   "check_ids": [
+    "DOMAIN.SUSPICIOUS_TLD",
+    "URL.KEYWORDS",
+    "URL.LOOKALIKE.TYPOSQUAT"
+   ],
+   "unavailable": [
+    "fetch.redirects",
+    "page.content",
+    "tls.revocation",
+    "tls.ct",
+    "domain.rdap",
+    "posture.headers"
+   ],
+   "expected": "suspicious_or_worse",
+   "outcome": "correct",
+   "seconds": 2.0
+  },
+  {
+   "id": "S4-threat-intel",
+   "group": "suspicious",
+   "what": "Google's official Safe Browsing phishing test page",
+   "input": "https://testsafebrowsing.appspot.com/s/phishing.html",
+   "report_id": "551845c0-35fd-459c-9b6c-a22c9aec6846",
+   "created_at": "2026-11-09T20:57:32Z",
+   "classification": "confirmed_malicious",
+   "score": 100,
+   "rule": "R1: URL.INTEL.GSB + URL.INTEL.VT_MAJORITY",
+   "coverage": 100,
+   "confidence": "high",
+   "report_hash": "0xfb8bd2b0787067c399baad3d2298efaa969951ef58179fcf703c2d4a0b8c2746",
+   "check_ids": [
+    "CORR.SHARED_INFRA",
+    "URL.INTEL.GSB",
+    "URL.INTEL.VT_MAJORITY"
+   ],
+   "unavailable": [],
+   "expected": "suspicious_or_worse",
+   "outcome": "correct",
+   "seconds": 7.9
+  },
+  {
+   "id": "B1-bank",
+   "group": "benign",
+   "what": "Indian bank (SBI)",
+   "input": "https://www.sbi.co.in/",
+   "report_id": "2ff13fd9-6596-430e-b279-8ba8e61ceab2",
+   "created_at": "2026-11-09T20:57:39Z",
+   "classification": "low_risk",
+   "score": 0,
+   "rule": "R5: No significant malicious indicators within the checks performed.",
+   "coverage": 100,
+   "confidence": "high",
+   "report_hash": "0x7d97666b6d163a709cc78635e5982217dc47b169937edfbb6a4f63b7bdfc8701",
+   "check_ids": [],
+   "unavailable": [],
+   "expected": "not_flagged",
+   "outcome": "correct",
+   "seconds": 3.2
+  },
+  {
+   "id": "B2-gov",
+   "group": "benign",
+   "what": "Income Tax e-filing portal",
+   "input": "https://www.incometax.gov.in/iec/foportal/",
+   "report_id": "c52f70aa-4974-49a3-99ae-b57fb59b2224",
+   "created_at": "2026-11-09T20:57:43Z",
+   "classification": "low_risk",
+   "score": 0,
+   "rule": "R5: No significant malicious indicators within the checks performed.",
+   "coverage": 100,
+   "confidence": "high",
+   "report_hash": "0x40fdbee64b760128658be85ce155171cdbfeecc48271a7298b7332e4fc7d130a",
+   "check_ids": [],
+   "unavailable": [],
+   "expected": "not_flagged",
+   "outcome": "correct",
+   "seconds": 2.3
+  },
+  {
+   "id": "B3-university",
+   "group": "benign",
+   "what": "WBJEE board (admission / exam portal)",
+   "input": "https://wbjeeb.nic.in/",
+   "report_id": "7aaaf489-9d8f-4ee9-867c-c7142f20cff1",
+   "created_at": "2026-11-09T20:57:45Z",
+   "classification": "suspicious",
+   "score": 10,
+   "rule": "R3: URL.INTEL.VT_MINORITY",
+   "coverage": 100,
+   "confidence": "medium",
+   "report_hash": "0x83e89b52b7cea5141469e2c73d7c663435c0dfe8d32793e35fb2c21cbfacb1f5",
+   "check_ids": [
+    "URL.INTEL.VT_MINORITY"
+   ],
+   "unavailable": [],
+   "expected": "not_flagged",
+   "outcome": "false_positive",
+   "seconds": 2.6
+  },
+  {
+   "id": "B4-otp-sms",
+   "group": "benign",
+   "what": "genuine-format bank OTP SMS",
+   "input": "482913 is your OTP for txn of INR 1,250.00 at AMAZON on HDFC Bank card xx1234. Valid for 5 mins. Do not share this OTP with anyone. -HDFC Bank",
+   "report_id": "a243f535-4bbe-4771-b878-75dabc0e658f",
+   "created_at": "2026-11-09T20:57:48Z",
+   "classification": "low_risk",
+   "score": 3,
+   "rule": "R5: No significant malicious indicators within the checks performed.",
+   "coverage": 100,
+   "confidence": "high",
+   "report_hash": "0x3fa96ce89e788f979ff2271a990f3b2e93283632a43a3d25c2de39d7eb5b4968",
+   "check_ids": [
+    "MSG.AUTHORITY_IMPERSONATION"
+   ],
+   "unavailable": [],
+   "expected": "not_flagged",
+   "outcome": "correct",
+   "seconds": 2.0
+  }
+ ],
+ "run": {
+  "date": "2026-11-10",
+  "how": "scripts/demo.sh (fresh Postgres volume) on a clean clone, run twice in a row; this file is the second run. Both runs: 70 s wall clock, identical classes.",
+  "stack_commit": "see git log for the commit that added this file"
+ },
+ "false_positives": [
+  {
+   "id": "B3-university",
+   "input": "https://wbjeeb.nic.in/",
+   "observed": "suspicious (R3: URL.INTEL.VT_MINORITY), score 10",
+   "explanation": "1 of 93 VirusTotal engines lists https://wbjeeb.nic.in/ as malicious. RISK_ENGINE.md maps 1-4 engines to a medium heuristic, and R3 fires on any medium finding, so the engine behaved as specified. The spec itself calls single-engine hits noisy; the finding's evidence shows '1 of 93'. Not fixed in this audit because it is a rule change (see COMPLIANCE.md)."
+  }
+ ],
+ "false_negatives": [],
+ "notes": [
+  "S3-lookalike is an invented name that does not resolve, so fetch/TLS/RDAP are unavailable (coverage 57%); it is suspicious on the lookalike check alone.",
+  "B4-otp-sms fires MSG.AUTHORITY_IMPERSONATION (low: the message names HDFC Bank) but stays low_risk; MSG.CREDENTIAL_REQUEST does not fire.",
+  "S2-tls revocation was unavailable (badssl's expired cert has no reachable OCSP answer)."
+ ],
+ "scamshield_sample": {
+  "command": "cd backend && uv run python -m eval.scamshield",
+  "llm": "off (deterministic only)",
+  "result": {
+   "tp": 25,
+   "fn": 0,
+   "fp": 0,
+   "tn": 30,
+   "llm_ok": 0,
+   "n": 55,
+   "precision": 100,
+   "recall": 100,
+   "by_class": {
+    "fraud": {
+     "suspicious": 25
+    },
+    "legit": {
+     "inconclusive": 30
+    }
+   },
+   "fraud_flagged_by_type": {
+    "Fake Police/Court Notice": "2/2",
+    "Generic Promo Fraud": "1/1",
+    "Insurance Scam": "1/1",
+    "Investment Scam": "2/2",
+    "Job Scam": "1/1",
+    "KYC Scam": "4/4",
+    "Loan Scam": "3/3",
+    "Lottery/Prize Scam": "4/4",
+    "OTP Phishing": "4/4",
+    "UPI Request Scam": "3/3"
+   }
+  },
+  "reading": "25/25 fraud flagged (suspicious), 0/30 legitimate flagged (all inconclusive: without the LLM step message coverage is 40%). This sample was used to tune the rules, so it is a regression check, not an accuracy measure.",
+  "held_out": "Not re-run: the full ScamShield-IN corpus file is not in the repository. The held-out figures in docs/TESTING.md come from an earlier session."
+ }
+}

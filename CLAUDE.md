@@ -78,7 +78,7 @@ Check IDs and severities live in `docs/RISK_ENGINE.md`. That table is the single
 
 - **Built on `httpx-secure` (pin the exact version)** for global-IP validation and connection pinning to the
   validated IP. Our wrapper adds the scheme/port policy, the manual redirect loop, and size/time caps. Keep our own
-  SSRF test suite regardless: the library is single-maintainer and v2.0 is new.
+  SSRF test suite regardless: the library has a single maintainer.
 - Schemes: http/https only. Ports: 80, 443, 8080, 8443.
 - Resolve DNS once and reject if ANY resolved address is private, loopback, link-local, multicast, reserved,
   CGNAT (100.64/10), 0.0.0.0/8, IPv6 ULA/link-local, or an IPv4-mapped form of those. Explicitly block
