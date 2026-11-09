@@ -3,6 +3,37 @@
 See CLAUDE.md for the module map and docs/RISK_ENGINE.md for rules R1–R5 and the check catalogue. This file gives the
 security methodology, records the outcome of the attacker review (Session F), and lists what is still open.
 
+## Pipeline
+
+```
+ input (link | domain | email | message | QR image)
+   │  detect.py: classify, normalise (IDN→punycode, %-decoded host, lowercase, trailing dot, userinfo dropped)
+   ▼
+ Submit ──► Investigate ─────────────────────────────────────────► Analyse ──────► Assess risk ──► Report & verify
+           │ fetch/safe_fetch (SSRF guard, pinned IP,           │ checks/*        │ engine/risk  │ store canonical bytes
+           │   manual redirects ≤5, 2 MB, 5 s, html/text only)  │ → Finding[]     │ R1–R5        │ ai/explain (redacted,
+           │ messages: extract indicators, ai/redact            │ + Evidence      │ score,       │   <untrusted_input>)
+           │ links in messages → full URL pipeline              │ + strength      │ coverage,    │ registry: keccak256(JCS)
+           │ threat intel via fetch/api_client (fixed hosts)    │ correlation/*   │ confidence   │   → ThreatRegistry (Sepolia)
+           │                                                    │                 │              │ verify.py / /verify
+   frontend (Next.js) ──HTTP──► backend (FastAPI) ──► Postgres
+```
+
+## Threat-intelligence sources and what leaves the server
+
+| Source | What is sent | Privacy note |
+|---|---|---|
+| Google Safe Browsing v5 `hashes.search` (default) | 4-byte SHA-256 prefixes of the URL expressions | The URL never leaves in clear; full hashes are matched locally |
+| Google Safe Browsing v5 `urls.search` (`GSB_MODE=urls`) | **The full raw URL**, query string included | Google sees every URL checked. Off by default for this reason |
+| URLhaus | The full URL, and the host | abuse.ch sees the URL |
+| VirusTotal | The URL's id (base64 of the full URL), lookup only | VT sees the URL; we never submit unknown URLs for scanning (that would publish them) |
+| OpenPhish | Nothing (feed downloaded and matched locally) | — |
+| Cert Spotter / crt.sh, RDAP, dns.google | The hostname / registrable domain | These services see which domains are checked |
+| osv.dev | Package name and version only (e.g. `jquery 1.12.4`) | No URL or host |
+| LLM (Gemini, else Claude) | Redacted message or page text inside `<untrusted_input>`, finding IDs; a screenshot only with explicit consent | Redaction is pattern-based (limitation 6) |
+
+Links found inside messages go to URLhaus and VirusTotal as-is (they need the exact URL); message text never does.
+
 ## Security methodology
 
 **Pipeline.** Input is classified (link, domain, email, message, QR). Links go through `safe_fetch` (SSRF-guarded,
@@ -174,4 +205,11 @@ cases) and `contracts/test/ThreatRegistry.t.sol` (reporter-role cases). Each fai
     small legitimate site that was wrongly flagged can be.
 23. **The org dashboard trusts its link.** Like CT watches, the dashboard id is a bearer token with no login. All it
     shows is derived from public information, and impersonation counts cover reports on this server only.
-
+24. **The fetcher is not in its own network sandbox (SEC-4, accepted for the hackathon).** `safe_fetch` and the checks run
+    inside the backend container, which can also reach Postgres on the compose network. Isolation today is in code:
+    every user-supplied target goes through `safe_fetch` (global addresses only, every resolved address checked,
+    connection pinned to the validated IP, every redirect hop re-validated, ports 80/443/8080/8443, metadata hosts
+    blocked, no JavaScript, html/text only, size and decompression caps), and TLS inspection reuses the same policy.
+    The fix is a separate fetch worker container on an egress-only network with no route to Postgres or the backend's
+    internal ports, called over a narrow queue/API. Until then, an SSRF bypass in `safe_fetch` would reach internal
+    services, which is why its test suite covers the alternate encodings, IPv6 forms and rebinding cases above.
