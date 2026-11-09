@@ -133,6 +133,20 @@ Confidence:
 | TLS.CERT_VERY_NEW | tls_trust | low | heuristic | Leaf issued < 7 days ago |
 | TLS.INCOMPLETE_CHAIN | tls_config | low | technical | Server omits intermediates (config, not compromise) |
 
+### Certificate verdict (Module 2)
+
+`GET /reports/{id}/certificate-verdict` (`engine/cert_verdict.py`) gives the certificate its own verdict, recomputed from
+the report's TLS findings. It is deliberately **not** a field of `AssessmentReport`: it is a pure function of hashed
+data, and adding a field would change the re-hash of every report already registered on-chain.
+
+| Verdict | When |
+|---|---|
+| `potentially_compromised` | any `tls_trust` finding with strength `authoritative` (TLS.DISTRUSTED_CA, TLS.REMOVED_ROOT, TLS.REVOKED) |
+| `suspicious` | otherwise, any `TLS.*` finding of severity ≥ `medium` |
+| `valid` | otherwise. Always shown with "a valid certificate does not mean the site is legitimate" |
+
+It lists `tls_trust` and `tls_config` check IDs separately and never changes the risk class.
+
 ### Message
 
 | check_id | Category | Severity | Strength | Fires when |

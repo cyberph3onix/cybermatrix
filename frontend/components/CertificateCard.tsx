@@ -1,4 +1,32 @@
-import type { CertificateSummary } from "@/lib/types";
+import type { CertificateSummary, CertificateVerdict } from "@/lib/types";
+
+const VERDICT: Record<CertificateVerdict["verdict"], { label: string; cls: string }> = {
+  valid: { label: "Valid: no certificate problems found", cls: "border-c-low bg-c-low-tint text-c-low-ink" },
+  suspicious: { label: "Suspicious certificate", cls: "border-c-susp bg-c-susp-tint text-c-susp-ink" },
+  potentially_compromised: {
+    label: "Potentially compromised: issued under a distrusted or revoked authority",
+    cls: "border-c-mal bg-c-mal-tint text-c-mal-ink",
+  },
+};
+
+function VerdictBox({ v }: { v: CertificateVerdict }) {
+  const style = VERDICT[v.verdict];
+  return (
+    <div className={`border-b p-3 text-sm sm:p-4 ${style.cls}`} data-testid="cert-verdict">
+      <p className="font-semibold">Certificate verdict: {style.label}</p>
+      {v.reasons.length > 0 && <p className="mt-1">Because of: {v.reasons.join(", ")}</p>}
+      <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[11rem_1fr]">
+        <dt>Trust problems</dt>
+        <dd>{v.trust_findings.join(", ") || "none found"}</dd>
+        <dt>Configuration problems</dt>
+        <dd>{v.config_findings.join(", ") || "none found"}</dd>
+      </dl>
+      <p className="mt-2 text-xs">
+        This verdict is about the certificate only and does not change the risk class above.
+      </p>
+    </div>
+  );
+}
 
 const OCSP: Record<CertificateSummary["ocsp_status"], string> = {
   good: "Not revoked (OCSP good)",
@@ -9,7 +37,7 @@ const OCSP: Record<CertificateSummary["ocsp_status"], string> = {
 
 const d = (s: string) => new Date(s).toLocaleDateString(undefined, { dateStyle: "medium" });
 
-export function CertificateCard({ cert }: { cert: CertificateSummary }) {
+export function CertificateCard({ cert, verdict }: { cert: CertificateSummary; verdict?: CertificateVerdict | null }) {
   const rows: [string, React.ReactNode][] = [
     ["Issued to", cert.subject_cn ?? "—"],
     ["Issuer", cert.issuer],
@@ -34,6 +62,7 @@ export function CertificateCard({ cert }: { cert: CertificateSummary }) {
         A valid certificate does not mean the site is legitimate. It shows the connection is
         encrypted to whoever holds this domain, and anyone can get one.
       </p>
+      {verdict && <VerdictBox v={verdict} />}
       <dl className="grid grid-cols-1 gap-x-6 gap-y-3 p-3 text-sm sm:grid-cols-[11rem_1fr] sm:p-4">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">

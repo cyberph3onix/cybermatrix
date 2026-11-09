@@ -27,6 +27,7 @@ from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters, impersonation_trends
 from app.db import DisputeReasonRow, OrgRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
 from app.detect import detect_subject
+from app.engine.cert_verdict import certificate_verdict
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
 from app.pipeline_upi import UpiError, assess_upi, is_upi
@@ -39,6 +40,7 @@ from app.schemas import (
     AssessmentReport,
     AssessRequest,
     AssessResponse,
+    CertificateVerdict,
     CheckStatus,
     Cluster,
     DisputeInfo,
@@ -265,6 +267,11 @@ async def get_report(report_id: str, db: Db) -> Response:
     row = await _row_or_404(db, report_id)
     # Serve the stored bytes: re-serialising could change them and break hash verification.
     return Response(content=row.canonical, media_type="application/json")
+
+
+@router.get("/reports/{report_id}/certificate-verdict", response_model=CertificateVerdict)
+async def get_certificate_verdict(report_id: str, db: Db) -> CertificateVerdict:
+    return certificate_verdict(store.parse_report(await _row_or_404(db, report_id)))
 
 
 @router.get("/reports/{report_id}/registration", response_model=RegistryRecord | None)

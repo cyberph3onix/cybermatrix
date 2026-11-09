@@ -2,8 +2,8 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { getReport } from "@/lib/api";
-import type { AssessmentReport } from "@/lib/types";
+import { getCertificateVerdict, getReport } from "@/lib/api";
+import type { AssessmentReport, CertificateVerdict } from "@/lib/types";
 import { AiBox } from "@/components/AiBox";
 import { StrengthLegend } from "@/components/Badges";
 import { CertificateCard } from "@/components/CertificateCard";
@@ -18,12 +18,16 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params);
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [certVerdict, setCertVerdict] = useState<CertificateVerdict | null>(null);
 
   useEffect(() => {
     let live = true;
     getReport(id)
       .then((r) => live && setReport(r))
       .catch((e) => live && setErr(e instanceof Error ? e.message : "Couldn't load this report."));
+    getCertificateVerdict(id)
+      .then((v) => live && setCertVerdict(v))
+      .catch(() => undefined); // optional: the card still renders without it
     return () => {
       live = false;
     };
@@ -94,7 +98,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
 
       {report.certificate && (
         <Section id="cert" title="Certificate">
-          <CertificateCard cert={report.certificate} />
+          <CertificateCard cert={report.certificate} verdict={certVerdict} />
         </Section>
       )}
 

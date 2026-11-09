@@ -407,6 +407,23 @@ class OrgDashboard(Strict):
                  "since monitoring started. Impersonation counts reports on this server only.")
 
 
+# ---------- certificate verdict (derived, not part of the hashed report) ----------
+
+class CertificateVerdict(Strict):
+    """Module 2 certificate security verdict, recomputed from the report's TLS findings (engine/cert_verdict.py)."""
+    report_id: str
+    verdict: Literal["valid", "suspicious", "potentially_compromised"] = Field(
+        description="potentially_compromised: an authoritative tls_trust finding (distrusted CA, removed root, revoked). "
+                    "suspicious: any other TLS finding of medium or higher. valid: neither.")
+    reasons: list[str] = Field(default_factory=list, description="check_ids that set the verdict")
+    trust_findings: list[str] = Field(default_factory=list, description="tls_trust check_ids (trust compromise)")
+    config_findings: list[str] = Field(default_factory=list, description="tls_config check_ids (configuration problems)")
+    certificate_checked: bool = Field(description="False when no certificate was obtained (http link, fetch failed)")
+    note: str = ("Describes the certificate only and does not change the risk class. A valid certificate does not mean "
+                 "the site is legitimate. We flag known-distrusted or compromised CAs from curated lists; we cannot "
+                 "detect a CA's key-generation weakness from a URL.")
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):

@@ -394,3 +394,15 @@ def test_registry_sync_refreshes_statuses_and_skips_old_contracts(client, chain)
     h = client.get(f"/reports/{old}/history").json()
     assert "earlier registry contract" in h["note"] and not h["can_dispute"] and not h["can_reassess"]
     assert client.post(f"/reports/{old}/reassess").status_code == 409
+
+
+def test_certificate_verdict_endpoint_is_derived_and_leaves_report_bytes_alone(client):
+    rid = assess(client)
+    before = client.get(f"/reports/{rid}").content
+    r = client.get(f"/reports/{rid}/certificate-verdict")
+    assert r.status_code == 200
+    v = r.json()
+    assert v["report_id"] == rid and v["verdict"] in ("valid", "suspicious", "potentially_compromised")
+    assert v["certificate_checked"] is False  # the fake TLS scanner returns no certificate
+    assert client.get(f"/reports/{rid}").content == before
+    assert client.get("/reports/00000000-0000-4000-8000-000000000000/certificate-verdict").status_code == 404

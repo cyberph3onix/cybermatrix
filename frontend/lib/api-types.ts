@@ -252,6 +252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/{report_id}/certificate-verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Certificate Verdict */
+        get: operations["get_certificate_verdict"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/dispute-reason": {
         parameters: {
             query?: never;
@@ -629,6 +646,45 @@ export interface components {
             subject_cn: string | null;
             /** Tls Version */
             tls_version: string | null;
+        };
+        /**
+         * CertificateVerdict
+         * @description Module 2 certificate security verdict, recomputed from the report's TLS findings (engine/cert_verdict.py).
+         */
+        CertificateVerdict: {
+            /**
+             * Certificate Checked
+             * @description False when no certificate was obtained (http link, fetch failed)
+             */
+            certificate_checked: boolean;
+            /**
+             * Config Findings
+             * @description tls_config check_ids (configuration problems)
+             */
+            config_findings: string[];
+            /**
+             * Note
+             * @default Describes the certificate only and does not change the risk class. A valid certificate does not mean the site is legitimate. We flag known-distrusted or compromised CAs from curated lists; we cannot detect a CA's key-generation weakness from a URL.
+             */
+            note: string;
+            /**
+             * Reasons
+             * @description check_ids that set the verdict
+             */
+            reasons: string[];
+            /** Report Id */
+            report_id: string;
+            /**
+             * Trust Findings
+             * @description tls_trust check_ids (trust compromise)
+             */
+            trust_findings: string[];
+            /**
+             * Verdict
+             * @description potentially_compromised: an authoritative tls_trust finding (distrusted CA, removed root, revoked). suspicious: any other TLS finding of medium or higher. valid: neither.
+             * @enum {string}
+             */
+            verdict: "valid" | "suspicious" | "potentially_compromised";
         };
         /** CheckRun */
         CheckRun: {
@@ -1717,6 +1773,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_certificate_verdict: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateVerdict"];
+                };
             };
             /** @description Validation Error */
             422: {

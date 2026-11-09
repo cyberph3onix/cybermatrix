@@ -6,6 +6,7 @@ import type {
   AssessRequest,
   AssessResponse,
   AssessmentReport,
+  CertificateVerdict,
   Cluster,
   DisputePrepared,
   ImpersonationTrend,
@@ -95,6 +96,11 @@ export async function assessQr(file: File): Promise<AssessResponse> {
 
 export async function getReport(id: string): Promise<AssessmentReport> {
   return request(`/reports/${encodeURIComponent(id)}`);
+}
+
+/** Module 2 certificate verdict, recomputed from the report's TLS findings (not part of the hashed report). */
+export async function getCertificateVerdict(id: string): Promise<CertificateVerdict> {
+  return request(`/reports/${encodeURIComponent(id)}/certificate-verdict`);
 }
 
 /** The stored registry record, or null if this report has not been registered. */

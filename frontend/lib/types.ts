@@ -23,6 +23,7 @@ export type CheckRun = S["CheckRun"];
 export type Indicator = S["Indicator"];
 export type RedirectHop = S["RedirectHop"];
 export type CertificateSummary = S["CertificateSummary"];
+export type CertificateVerdict = S["CertificateVerdict"];
 export type Coverage = S["Coverage"];
 export type AIExplanation = S["AIExplanation"];
 export type AssessmentReport = S["AssessmentReport"];
