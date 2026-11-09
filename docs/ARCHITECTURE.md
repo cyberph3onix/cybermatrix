@@ -1,7 +1,32 @@
 # Architecture
 
-See CLAUDE.md for the module map and docs/RISK_ENGINE.md for rules R1–R5 and the check catalogue. This file records
-the outcome of the attacker review (Session F) and what is still open.
+See CLAUDE.md for the module map and docs/RISK_ENGINE.md for rules R1–R5 and the check catalogue. This file gives the
+security methodology, records the outcome of the attacker review (Session F), and lists what is still open.
+
+## Security methodology
+
+**Pipeline.** Input is classified (link, domain, email, message, QR). Links go through `safe_fetch` (SSRF-guarded,
+pinned IP, manual redirects, size and time caps, no JavaScript) and the checks run concurrently with per-check
+timeouts: URL structure and lookalikes, redirects, page content, TLS chain / revocation / CT, RDAP age, DNS
+(DNS-over-HTTPS), and four threat-intel sources. Messages get indicator extraction, redaction, wording signals and
+the link pipeline for every link they contain. Correlation compares indicators and message wording with stored
+reports. `engine/risk.py` then classifies with rules R1–R5; the LLM only explains and extracts.
+
+**Evidence model.** Every finding carries evidence with a source and a strength (authoritative, technical,
+heuristic). Heuristics are capped at 30 points, so wording alone never exceeds `suspicious`. Security-posture items
+(headers, email authentication, end-of-life software, exposed files) never affect the phishing class. Coverage and
+limitations are part of every report; the best class is `low_risk`, never "safe".
+
+**Threat intelligence.** Google Safe Browsing v5 (hash prefixes only), URLhaus, OpenPhish (local feed), VirusTotal
+(lookup only, ≥ 5 engines = authoritative), the eMudhra distrust list (cert and SPKI SHA-256), Cert Spotter / crt.sh,
+RDAP and DNS-over-HTTPS. Host-level intel matches are skipped on allowlisted and abusable hosts.
+
+**Trust boundaries.** Untrusted text reaches the LLM only redacted and inside `<untrusted_input>`; outputs are
+schema-validated and unknown check IDs dropped. Active requests to a site beyond the page fetch (`/.env`, `/.git`)
+need DNS or file proof of ownership. On-chain data is a hash commitment only, with a random salt.
+
+**Validation.** 490+ offline tests (recorded fixtures), 61 Foundry tests at 100% branch coverage, the demo seed
+(≥ 3 benign and ≥ 3 malicious cases) and the ScamShield-IN evaluation with held-out numbers (docs/TESTING.md).
 
 ## Attacker review: what was tried and what changed
 
@@ -40,7 +65,8 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
    interval. Rows from the v1 contract keep their last status: their on-chain ids mean something else on v2.
 4. **Single relayer, single owner.** All reports register from one address, so the on-chain reporter does not identify
    a user, and the contract owner and validators are fully trusted.
-5. **Rate limits are in-process.** They assume one backend instance. Several instances, or a proxy that is not trusted
+5. **Rate limits are in-process (accepted).** They assume one backend instance; a shared store such as Redis is the fix
+   for a multi-instance deployment. Several instances, or a proxy that is not trusted
    (`TRUST_FORWARDED_FOR`), weaken them.
 6. **Redaction is pattern-based.** Names can only be caught after a salutation, sign-off, "my name is" or "This is X Y
    from"; addresses and free-form identifiers are not detected. Digits written as words, or split by letters, are not
