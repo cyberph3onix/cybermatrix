@@ -115,3 +115,32 @@ async def test_run_contract():
         run, findings = await mod.run(ctx)
         assert run.status == "completed" and run.weight == 5
         assert all(f.evidence and f.evidence[0].source for f in findings)
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("url,brand", [
+    ("https://paypa1.com/login", "PayPal"), ("https://paypa1-secure-login.xyz/", "PayPal"),
+    ("https://paypal-secure-login.xyz/", "PayPal"), ("https://paypall.com/", "PayPal"),
+    ("https://g00gle-account-verify.top/", "Google"), ("https://rnicrosoft-support.online/", "Microsoft"),
+    ("https://amaz0n-offers.in/", "Amazon India"), ("https://arnazon.com/", "Amazon India"),
+    ("https://netfIix.com/", "Netflix"), ("https://whatsapp-gold.top/", "Facebook / Instagram / WhatsApp"),
+    ("https://app1e-id-locked.xyz/", "Apple"),
+])
+def test_global_brand_lookalikes_including_digit_swaps_and_keyword_combos_are_flagged(url, brand):
+    from app.brands import get_index
+    from app.checks.lookalike import analyze
+    from app.urlutil import parse_url
+    fs = analyze(parse_url(url), get_index())
+    assert fs and brand in fs[0].title, (url, [f.title for f in fs])
+
+
+@pytest.mark.parametrize("url", ["https://apply.com/", "https://ample.com/", "https://www.paypal.com/signin",
+                                 "https://mail.google.com/", "https://login.microsoftonline.com/", "https://metals.com/",
+                                 "https://appleseed-farm.com/", "https://www.dhl.com/in-en/home.html"])
+def test_ordinary_words_and_official_domains_are_not_flagged(url):
+    from app.brands import get_index
+    from app.checks.lookalike import analyze
+    from app.urlutil import parse_url
+    assert analyze(parse_url(url), get_index()) == [], url

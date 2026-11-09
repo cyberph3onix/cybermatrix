@@ -27,6 +27,18 @@
     {"id": "linkedin", "name": "LinkedIn", "category": "jobs", "official_domains": ["linkedin.com", "lnkd.in"], "labels": ["linkedin"], "aliases": ["LinkedIn"]},
     {"id": "naukri", "name": "Naukri", "category": "jobs", "official_domains": ["naukri.com"], "labels": ["naukri"], "aliases": ["Naukri", "Naukri.com"]},
     {"id": "wbjee", "name": "WBJEE Board", "category": "education", "official_domains": ["wbjeeb.nic.in", "wbjeeb.in"], "labels": ["wbjeeb", "wbjee"], "aliases": ["WBJEE", "WBJEEB", "West Bengal Joint Entrance Examinations Board"], "verify": true},
-    {"id": "iem", "name": "Institute of Engineering & Management", "category": "education", "official_domains": ["iem.edu.in"], "labels": ["iem"], "aliases": ["Institute of Engineering & Management", "Institute of Engineering and Management", "IEM Kolkata"], "verify": true}
+    {"id": "iem", "name": "Institute of Engineering & Management", "category": "education", "official_domains": ["iem.edu.in"], "labels": ["iem"], "aliases": ["Institute of Engineering & Management", "Institute of Engineering and Management", "IEM Kolkata"], "verify": true},
+    {"id": "paypal", "name": "PayPal", "category": "payments", "official_domains": ["paypal.com", "paypal.me", "paypalobjects.com"], "labels": ["paypal"], "aliases": ["PayPal"]},
+    {"id": "google", "name": "Google", "category": "tech", "official_domains": ["google.com", "google.co.in", "gmail.com", "gstatic.com", "googleusercontent.com"], "labels": ["google", "gmail"], "aliases": ["Google", "Gmail", "Google Account"]},
+    {"id": "microsoft", "name": "Microsoft", "category": "tech", "official_domains": ["microsoft.com", "live.com", "office.com", "outlook.com", "microsoftonline.com", "windows.com"], "labels": ["microsoft", "outlook", "office365"], "aliases": ["Microsoft", "Outlook", "Microsoft 365", "Office 365"], "min_typo_len": 9},
+    {"id": "apple", "name": "Apple", "category": "tech", "official_domains": ["apple.com", "icloud.com"], "labels": ["apple", "icloud"], "aliases": ["Apple", "iCloud", "Apple ID"], "min_typo_len": 8},
+    {"id": "netflix", "name": "Netflix", "category": "media", "official_domains": ["netflix.com"], "labels": ["netflix"], "aliases": ["Netflix"]},
+    {"id": "meta", "name": "Facebook / Instagram / WhatsApp", "category": "social", "official_domains": ["facebook.com", "fb.com", "instagram.com", "whatsapp.com", "meta.com"], "labels": ["facebook", "instagram", "whatsapp"], "aliases": ["Facebook", "Instagram", "WhatsApp"]},
+    {"id": "telegram", "name": "Telegram", "category": "social", "official_domains": ["telegram.org", "t.me"], "labels": ["telegram"], "aliases": ["Telegram"]},
+    {"id": "dhl", "name": "DHL", "category": "logistics", "official_domains": ["dhl.com"], "labels": ["dhl"], "aliases": ["DHL"]},
+    {"id": "fedex", "name": "FedEx", "category": "logistics", "official_domains": ["fedex.com"], "labels": ["fedex"], "aliases": ["FedEx"]},
+    {"id": "binance", "name": "Binance", "category": "crypto", "official_domains": ["binance.com"], "labels": ["binance"], "aliases": ["Binance"]},
+    {"id": "coinbase", "name": "Coinbase", "category": "crypto", "official_domains": ["coinbase.com"], "labels": ["coinbase"], "aliases": ["Coinbase"]},
+    {"id": "metamask", "name": "MetaMask", "category": "crypto", "official_domains": ["metamask.io"], "labels": ["metamask"], "aliases": ["MetaMask"]}
   ]
 }

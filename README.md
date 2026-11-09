@@ -46,6 +46,9 @@ On-chain writes are off under compose: the backend container ignores `SEPOLIA_RP
 `.env` (register and verify answer 503). To enable them on purpose, add `CHAIN_SEPOLIA_RPC_URL` and
 `CHAIN_RELAYER_PRIVATE_KEY` to `.env`. With those set, "Register on-chain" sends a real Sepolia transaction.
 
+For a repeatable demo without live feeds, `cd backend && uv run python -m demo.seed` loads recorded example reports
+(see docs/TESTING.md).
+
 After changing `backend/app/schemas.py` or any route, regenerate the frontend types: `cd frontend && npm run gen`.
 
 ## Development

@@ -15,6 +15,7 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const detected = useMemo(() => (qr ? "qr" : detectSubjectType(text)), [qr, text]);
+  const showOwns = detected === "url" || detected === "domain";
   const canSubmit = !busy && (qr !== null || text.trim().length > 0);
 
   async function submit(e: React.FormEvent) {
@@ -66,7 +67,7 @@ export default function Home() {
           spellCheck={false}
         />
 
-        <p className="min-h-6 text-sm text-muted" aria-live="polite">
+        <p className="min-h-12 text-sm text-muted" aria-live="polite">
           {detected ? (
             <>
               Treating this as: <span className="font-medium text-ink">{SUBJECT_LABEL[detected]}</span>
@@ -77,20 +78,20 @@ export default function Home() {
           )}
         </p>
 
-        {(detected === "url" || detected === "domain") && (
-          <label className="flex items-start gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={owns}
-              onChange={(e) => setOwns(e.target.checked)}
-              className="mt-1 size-4"
-            />
-            <span>
-              I own this site. Also check whether <code>/.git/HEAD</code> and <code>/.env</code> are publicly
-              readable (two extra requests to the site).
-            </span>
-          </label>
-        )}
+        {/* Always rendered and only hidden (`invisible` also drops it from tab order and the accessibility tree),
+            so it appearing never shifts the layout. The status line above reserves two lines for the same reason. */}
+        <label className={`flex items-start gap-2 text-sm text-muted ${showOwns ? "" : "invisible"}`}>
+          <input
+            type="checkbox"
+            checked={owns}
+            onChange={(e) => setOwns(e.target.checked)}
+            className="mt-1 size-4"
+          />
+          <span>
+            I own this site. Also check whether <code>/.git/HEAD</code> and <code>/.env</code> are publicly
+            readable (two extra requests to the site).
+          </span>
+        </label>
 
         <div className="flex flex-wrap items-center gap-3">
           <button

@@ -167,7 +167,9 @@ async def assess_qr(st: St, db: Db, file: Annotated[UploadFile, File(description
             report = assess_upi(link)
         except UpiError as e:
             raise HTTPException(422, str(e)) from None
-        report = finalize_upi(await _explain(st, await apply_correlation(db, report)))
+        # No AI explanation here: the model sees only findings, so for a QR with no website it invents a story
+        # (it claimed nothing was compared). The deterministic reason and advice are already accurate.
+        report = finalize_upi(await apply_correlation(db, report))
         await store.save_report(db, report)
         return AssessResponse(report_id=report.report_id)
     if len(link) > MAX_URL_CHARS or not re.match(r"^https?://", link, re.IGNORECASE):

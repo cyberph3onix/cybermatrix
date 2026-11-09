@@ -215,6 +215,17 @@ def analyze(u: ParsedURL, idx: BrandIndex) -> list[Finding]:
     return out
 
 
+_LEET = str.maketrans({"0": "o", "3": "e", "4": "a", "5": "s", "7": "t", "1": "l"})
+_LEET_I = str.maketrans({"0": "o", "3": "e", "4": "a", "5": "s", "7": "t", "1": "i"})
+
+
+def _deleet(label: str) -> list[str]:
+    """Readings of a label with digits swapped back to the letters they imitate (paypa1 -> paypal / paypai)."""
+    if not any(c.isdigit() for c in label):
+        return []
+    return list(dict.fromkeys(v for v in (label.translate(_LEET), label.translate(_LEET_I)) if v != label))
+
+
 def _typo(label: str, idx: BrandIndex) -> tuple[Brand, str, str] | None:
     parts = [p for p in re.split(r"[-_]+", label) if p] or [label]
     for b in idx.brands:
@@ -223,6 +234,11 @@ def _typo(label: str, idx: BrandIndex) -> tuple[Brand, str, str] | None:
                 return b, lbl, "same_label_other_suffix"
             if _affixed(label, lbl):
                 return b, lbl, "brand_plus_affix"
+            for v in _deleet(label):  # digit-for-letter swap: paypa1-secure-login, amaz0n-offers
+                if v == lbl and len(lbl) >= b.min_typo_len:  # short brand names never match by lookalike alone
+                    return b, lbl, "digit_substitution"
+                if _affixed(v, lbl):
+                    return b, lbl, "digit_substitution+affix"
             if len(lbl) < b.min_typo_len:
                 continue
             for p in parts:

@@ -273,6 +273,7 @@ def test_upi_qr_with_unknown_payee_is_inconclusive_and_keeps_only_the_payee(clie
     assert rep["indicators"] == [{"type": "upi_id", "value": "shop.owner@okhdfc", "normalized": "shop.owner@okhdfc"}]
     assert "Some Name" not in json.dumps(rep) and "secret note" not in json.dumps(rep)
     assert "receive money" in " ".join(rep["recommended_actions"])
+    assert rep["ai"] is None
 
 
 def test_upi_qr_rejects_missing_or_invalid_payee(client):

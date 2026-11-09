@@ -159,7 +159,7 @@ export default function VerifyPage() {
               {res.explorer_url && (
                 <p className="mt-3 text-sm">
                   <a className="text-accent underline" href={res.explorer_url} target="_blank" rel="noopener noreferrer">
-                    View transaction on Etherscan (Sepolia)
+                    {res.tx_hash ? "View transaction on Etherscan (Sepolia)" : "View the registry contract on Etherscan (Sepolia)"}
                   </a>
                 </p>
               )}
