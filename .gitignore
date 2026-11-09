@@ -9,3 +9,4 @@ contracts/out/
 contracts/cache/
 contracts/broadcast/
 backend/data/.cache/
+KICKOFF_PROMPTS.md
