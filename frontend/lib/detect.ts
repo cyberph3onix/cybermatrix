@@ -1,7 +1,7 @@
 import type { SubjectType } from "./types";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const DOMAIN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#]\S*)?$/i;
+const DOMAIN = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\.?(?::\d+)?(?:[/?#]\S*)?$/i;
 
 /** Guess what the user pasted. Backend re-detects; this only drives the UI hint. */
 export function detectSubjectType(raw: string): SubjectType | null {

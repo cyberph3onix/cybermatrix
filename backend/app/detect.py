@@ -7,7 +7,7 @@ from app.schemas import SubjectType
 
 _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
 _URL = re.compile(r"^https?://\S+$", re.IGNORECASE)
-_DOMAIN = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#]\S*)?$", re.IGNORECASE)
+_DOMAIN = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\.?(?::\d+)?(?:[/?#]\S*)?$", re.IGNORECASE)
 
 
 def detect_subject(raw: str) -> SubjectType:

@@ -72,3 +72,12 @@ def test_normalisation(url, host, norm):
 def test_bad_percent_encoded_hosts_rejected(url):
     with pytest.raises(URLParseError):
         parse_url(url)
+
+
+@pytest.mark.parametrize("text,kind", [
+    ("WWW.SBI.CO.IN.", "domain"), ("sbi.co.in", "domain"), ("Sbi.Co.In/login", "url"),
+    ("https://sbi.co.in", "url"), ("alerts@paypa1.xyz", "email"), ("hello there sbi.co.in", "message"),
+])
+def test_detect_subject_bare_domains_including_case_and_trailing_dot(text, kind):
+    from app.detect import detect_subject
+    assert detect_subject(text) == kind
