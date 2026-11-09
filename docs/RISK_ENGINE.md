@@ -26,7 +26,7 @@ Points by severity: critical 50, high 25, medium 10, low 3, info 0.
 |---|---|---|
 | R1 | `confirmed_malicious` | Any finding with strength `authoritative` and severity `critical` |
 | R1b | `confirmed_malicious` | Corroborated impersonation: (`URL.LOOKALIKE.HOMOGLYPH` or `URL.BRAND_IN_SUBDOMAIN`) **and** `PAGE.CREDENTIAL_FORM` **and** (`DOMAIN.YOUNG` or `TLS.CERT_VERY_NEW`) |
-| R2 | `high_risk` | score ≥ 60, **or** any `critical` technical finding, **or** ≥ 2 `high` technical findings |
+| R2 | `high_risk` | score ≥ 60, **or** any `critical` technical finding, **or** ≥ 2 `high` findings of strength ≥ `technical` (technical or authoritative) |
 | R3 | `suspicious` | score ≥ 20, **or** any finding ≥ `medium` |
 | R4 | `inconclusive` | coverage < 50% |
 | R5 | `low_risk` | Otherwise. Display text: "No significant malicious indicators within the checks performed." |

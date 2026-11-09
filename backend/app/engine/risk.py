@@ -124,7 +124,8 @@ def classify(findings: list[Finding], coverage_percent: int) -> Verdict:
         return v(RiskClass.CONFIRMED_MALICIOUS, _fmt("R1b", [imp[0], "PAGE.CREDENTIAL_FORM", fresh[0]]))
 
     crit_tech = [f.check_id for f in fs if f.strength == "technical" and f.severity == "critical"]
-    high_tech = [f.check_id for f in fs if f.strength == "technical" and f.severity == "high"]
+    # strength >= technical: an authoritative high finding (TLS.REMOVED_ROOT) counts as at least technical
+    high_tech = [f.check_id for f in fs if f.strength in ("technical", "authoritative") and f.severity == "high"]
     if s >= 60 or crit_tech or len(high_tech) >= 2:
         if crit_tech:
             return v(RiskClass.HIGH_RISK, _fmt("R2", crit_tech))

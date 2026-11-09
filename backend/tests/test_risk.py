@@ -41,6 +41,8 @@ CASES = [
      "R2: TLS.EXPIRED + TLS.HOSTNAME_MISMATCH", 50),
     ("R2 score >= 60", ["PAGE.CREDENTIAL_FORM", "URL.IP_HOST", "URL.EMBEDDED_REDIRECT_PARAM", "REDIRECT.CROSS_DOMAIN",
                         "TLS.NO_HTTPS", "PAGE.BRAND_MISMATCH"], 90, "high_risk", "R2", 75),
+    ("R2 authoritative high counts as >= technical (RC-4)", ["TLS.REMOVED_ROOT", "TLS.HOSTNAME_MISMATCH"], 90,
+     "high_risk", "R2: TLS.REMOVED_ROOT + TLS.HOSTNAME_MISMATCH", 50),
     ("R2 near-miss: one high technical", ["TLS.SELF_SIGNED"], 90, "suspicious", "R3: TLS.SELF_SIGNED", 25),
     ("R3 one medium", ["URL.IP_HOST"], 90, "suspicious", "R3: URL.IP_HOST", 10),
     ("R3 medium heuristic", ["URL.INTEL.VT_MINORITY"], 90, "suspicious", "R3: URL.INTEL.VT_MINORITY", 10),
