@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "ThreatRegistry": "0x22Cc4217bD5639F5b7159eDA584AC066eb8e73bc",
+  "deployBlock": 12095596,
+  "deployTx": "0xedcaba82855b682b40d8922dde770c954819f2f195b5c1b1c423de289100b2b5",
+  "owner": "0xaf66d238Ba970Acc2Dd4524eFE175aBEaa39105C",
+  "validators": ["0xaf66d238Ba970Acc2Dd4524eFE175aBEaa39105C"],
+  "relayer": "0x1B7c212ffC6FA799fE6131462F2C05046B8a848e",
+  "sourceVerified": "https://sepolia.etherscan.io/address/0x22cc4217bd5639f5b7159eda584ac066eb8e73bc#code"
+}

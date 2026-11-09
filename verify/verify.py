@@ -84,11 +84,30 @@ def load_report(path: Path) -> Any:
         return json.load(f)
 
 
-def _find_tx(w3: Any, contract: Any, report_id: int, from_block: int) -> str | None:
-    """Best effort: many public RPCs cap eth_getLogs ranges, so failures fall back to the address link."""
+def _block_at(w3: Any, timestamp: int, lo: int) -> int:
+    """Lowest block number whose timestamp is >= `timestamp` (binary search, ~log2(height) header reads)."""
+    hi = w3.eth.block_number
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if w3.eth.get_block(mid)["timestamp"] < timestamp:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def _find_tx(w3: Any, contract: Any, report_id: int, created_at: int, from_block: int) -> str | None:
+    """Locate the registering tx without wide eth_getLogs ranges (free RPC tiers cap them at ~10 blocks).
+
+    `createdAt` is block.timestamp of the submitting block, so we binary-search for the blocks carrying exactly
+    that timestamp (one block on Ethereum's 12 s slots; possibly several on a dev chain) and query only those.
+    Best effort: on any failure, return None.
+    """
     try:
+        first = _block_at(w3, created_at, from_block)
+        last = _block_at(w3, created_at + 1, first)  # first block after; inclusive bound is harmless
         logs = contract.events.ReportSubmitted.get_logs(
-            from_block=from_block, to_block="latest", argument_filters={"id": report_id}
+            from_block=first, to_block=last, argument_filters={"id": report_id}
         )
     except Exception:  # noqa: BLE001 - any RPC failure → fall back to the address link
         return None
@@ -137,7 +156,7 @@ def verify(report_path: Path, rpc: str, address: str, from_block: int = 0) -> di
     else:  # should be impossible for a correct contract; reported rather than trusted
         result["reason"] = "on-chain record hash differs from computed hash"
 
-    tx = _find_tx(w3, contract, report_id, from_block)
+    tx = _find_tx(w3, contract, report_id, created_at, from_block)
     if tx:
         result["tx_hash"] = tx
     if explorer:
