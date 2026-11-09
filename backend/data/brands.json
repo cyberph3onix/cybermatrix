@@ -1,0 +1,32 @@
+{
+  "_about": "Protected brands. official_domains are registrable domains (PSL incl. private). labels drive lookalike/brand-in-subdomain matching; aliases are matched against page identity signals (title site-name, og:site_name, logo alt). Labels shorter than min_typo_len (default 5) only match exactly, with an affix, or as a homoglyph. Entries marked verify:true were not confirmed against the brand's own site; check before the demo.",
+  "default_min_typo_len": 5,
+  "brands": [
+    {"id": "sbi", "name": "State Bank of India", "category": "bank", "official_domains": ["sbi.co.in", "onlinesbi.sbi", "sbi.bank.in", "sbiyono.sbi", "sbicard.com"], "labels": ["sbi", "onlinesbi", "sbiyono", "yonosbi"], "aliases": ["State Bank of India", "SBI", "YONO SBI", "OnlineSBI", "YONO"]},
+    {"id": "hdfc", "name": "HDFC Bank", "category": "bank", "official_domains": ["hdfcbank.com", "hdfc.bank.in", "hdfc.com"], "labels": ["hdfcbank", "hdfc"], "aliases": ["HDFC Bank", "HDFC"]},
+    {"id": "icici", "name": "ICICI Bank", "category": "bank", "official_domains": ["icicibank.com", "icici.bank.in", "icicidirect.com"], "labels": ["icicibank", "icici"], "aliases": ["ICICI Bank", "ICICI", "iMobile"]},
+    {"id": "axis", "name": "Axis Bank", "category": "bank", "official_domains": ["axisbank.com", "axis.bank.in", "axisbank.co.in"], "labels": ["axisbank"], "aliases": ["Axis Bank"]},
+    {"id": "kotak", "name": "Kotak Mahindra Bank", "category": "bank", "official_domains": ["kotak.com", "kotak.bank.in", "kotak811.com"], "labels": ["kotak", "kotakbank", "kotak811"], "aliases": ["Kotak Mahindra Bank", "Kotak Bank", "Kotak", "Kotak811"]},
+    {"id": "pnb", "name": "Punjab National Bank", "category": "bank", "official_domains": ["pnbindia.in", "pnb.bank.in", "netpnb.com", "pnb.co.in"], "labels": ["pnb", "pnbindia", "netpnb"], "aliases": ["Punjab National Bank", "PNB"], "verify": true},
+    {"id": "bob", "name": "Bank of Baroda", "category": "bank", "official_domains": ["bankofbaroda.in", "bankofbaroda.bank.in", "bankofbaroda.com", "bobibanking.com"], "labels": ["bankofbaroda", "bobibanking", "bobworld"], "aliases": ["Bank of Baroda", "bob World"], "verify": true},
+    {"id": "canara", "name": "Canara Bank", "category": "bank", "official_domains": ["canarabank.com", "canarabank.in", "canarabank.bank.in"], "labels": ["canarabank", "canara"], "aliases": ["Canara Bank"], "verify": true},
+    {"id": "paytm", "name": "Paytm", "category": "payments", "official_domains": ["paytm.com", "paytm.in", "paytmbank.com", "paytmmoney.com"], "labels": ["paytm"], "aliases": ["Paytm", "Paytm Payments Bank"]},
+    {"id": "phonepe", "name": "PhonePe", "category": "payments", "official_domains": ["phonepe.com"], "labels": ["phonepe"], "aliases": ["PhonePe"]},
+    {"id": "gpay", "name": "Google Pay", "category": "payments", "official_domains": ["google.com", "google.co.in"], "labels": ["gpay", "googlepay", "google"], "aliases": ["Google Pay", "GPay"]},
+    {"id": "npci", "name": "NPCI / UPI / BHIM", "category": "payments", "official_domains": ["npci.org.in", "bhimupi.org.in"], "labels": ["npci", "bhimupi"], "aliases": ["NPCI", "National Payments Corporation of India", "BHIM", "BHIM UPI"]},
+    {"id": "irctc", "name": "IRCTC", "category": "government", "official_domains": ["irctc.co.in", "irctc.com"], "labels": ["irctc"], "aliases": ["IRCTC", "Indian Railway Catering and Tourism Corporation"]},
+    {"id": "indiapost", "name": "India Post / IPPB", "category": "government", "official_domains": ["indiapost.gov.in", "ippbonline.com"], "labels": ["indiapost", "ippbonline", "ippb"], "aliases": ["India Post", "India Post Payments Bank", "IPPB"]},
+    {"id": "incometax", "name": "Income Tax Department", "category": "government", "official_domains": ["incometax.gov.in", "incometaxindia.gov.in"], "labels": ["incometax", "incometaxindia"], "aliases": ["Income Tax Department", "Income Tax e-Filing", "e-Filing"]},
+    {"id": "uidai", "name": "UIDAI (Aadhaar)", "category": "government", "official_domains": ["uidai.gov.in"], "labels": ["uidai", "myaadhaar", "aadhaar"], "aliases": ["UIDAI", "Unique Identification Authority of India", "myAadhaar"]},
+    {"id": "epfo", "name": "EPFO", "category": "government", "official_domains": ["epfindia.gov.in"], "labels": ["epfo", "epfindia"], "aliases": ["EPFO", "Employees' Provident Fund Organisation", "Employees Provident Fund Organisation"]},
+    {"id": "digilocker", "name": "DigiLocker", "category": "government", "official_domains": ["digilocker.gov.in"], "labels": ["digilocker"], "aliases": ["DigiLocker"]},
+    {"id": "parivahan", "name": "Parivahan (e-Challan)", "category": "government", "official_domains": ["parivahan.gov.in"], "labels": ["parivahan", "echallan"], "aliases": ["Parivahan", "e-Challan", "eChallan"]},
+    {"id": "gst", "name": "GST Portal", "category": "government", "official_domains": ["gst.gov.in"], "labels": ["gstportal"], "aliases": ["GST Portal", "Goods and Services Tax"]},
+    {"id": "flipkart", "name": "Flipkart", "category": "commerce", "official_domains": ["flipkart.com"], "labels": ["flipkart"], "aliases": ["Flipkart"]},
+    {"id": "amazon", "name": "Amazon India", "category": "commerce", "official_domains": ["amazon.in", "amazon.com"], "labels": ["amazon"], "aliases": ["Amazon", "Amazon.in"]},
+    {"id": "linkedin", "name": "LinkedIn", "category": "jobs", "official_domains": ["linkedin.com", "lnkd.in"], "labels": ["linkedin"], "aliases": ["LinkedIn"]},
+    {"id": "naukri", "name": "Naukri", "category": "jobs", "official_domains": ["naukri.com"], "labels": ["naukri"], "aliases": ["Naukri", "Naukri.com"]},
+    {"id": "wbjee", "name": "WBJEE Board", "category": "education", "official_domains": ["wbjeeb.nic.in", "wbjeeb.in"], "labels": ["wbjeeb", "wbjee"], "aliases": ["WBJEE", "WBJEEB", "West Bengal Joint Entrance Examinations Board"], "verify": true},
+    {"id": "iem", "name": "Institute of Engineering & Management", "category": "education", "official_domains": ["iem.edu.in"], "labels": ["iem"], "aliases": ["Institute of Engineering & Management", "Institute of Engineering and Management", "IEM Kolkata"], "verify": true}
+  ]
+}

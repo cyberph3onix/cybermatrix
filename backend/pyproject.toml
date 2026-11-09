@@ -1,0 +1,37 @@
+[project]
+name = "cybermatrix-backend"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = [
+    "httpx==0.28.1",
+    "httpx-secure==2.0.0",
+    "pydantic>=2.8,<3",
+    "tldextract>=5.1,<6",
+    "dnstwist==20250130",
+    "confusable-homoglyphs>=3.3,<4",
+    "idna>=3.7",
+    "selectolax>=1.0,<2",
+    "sslyze==6.3.1",
+    "cryptography>=43,<47",
+    "rfc8785>=0.1.4",
+    "eth-hash[pycryptodome]>=0.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "respx>=0.21", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["live: hits the real network (badssl.com, crt.sh)"]
+addopts = "-m 'not live'"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["app/schemas.py"]  # frozen data contract: never auto-fix
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+ignore = ["E501"]
