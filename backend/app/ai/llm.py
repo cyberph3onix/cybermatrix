@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any, Protocol
 
 MODEL = "claude-haiku-5-5"
@@ -111,6 +112,15 @@ def default_llm() -> LlmClient | None:
         except LlmUnavailable:
             continue
     return None
+
+
+_TAG = re.compile(r"<\s*/?\s*untrusted_input\b[^>]*>", re.IGNORECASE)
+
+
+def untrusted(text: str) -> str:
+    """Wrap third-party text for a prompt. Any tag look-alike inside it is removed first, so the text cannot close
+    the block early and continue as if it were our own instructions."""
+    return f"<untrusted_input>\n{_TAG.sub('[tag removed]', text)}\n</untrusted_input>"
 
 
 INJECTION_RULES = (

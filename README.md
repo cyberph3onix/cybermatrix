@@ -8,31 +8,35 @@ without trusting our backend.
 
 | | |
 |---|---|
-| Contract (v2) | [`0x465094577Fe42BD31d705581bD3baAB51397BbB4`](https://sepolia.etherscan.io/address/0x465094577fe42bd31d705581bd3baab51397bbb4#code) (source verified) |
-| Deploy tx | [`0x6585a3d9…0d09`](https://sepolia.etherscan.io/tx/0x6585a3d9c634e5e996d58f973dfd4deb4d992647b18f1b100a511d14943c0d09), block 12097776 |
-| Sample report registration | [`0x9e5e9b57…06c2`](https://sepolia.etherscan.io/tx/0x9e5e9b575060c4b0d2d9d1998ad4c488a66849e08d7cb21a88df5dc4eff806c2) (report #1), validated in [`0x7c633465…a6b`](https://sepolia.etherscan.io/tx/0x7c633465add3ac61f6dd9e6d4c90c66ac078a0a56b6d8606ba538d0fddc58a6b) |
+| Contract (v3) | [`0x5De4Cd6F651A4D80ddA16fc70431dd669621BeeA`](https://sepolia.etherscan.io/address/0x5de4cd6f651a4d80dda16fc70431dd669621beea#code) (source verified) |
+| Deploy tx | [`0xbdf33b29…bb3b`](https://sepolia.etherscan.io/tx/0xbdf33b29c1e6d07e0eb41d5742d924f21444c5c1817857d3c1c77d4ca507bb3b), block 12099038 |
+| Sample report registration | [`0x08d6c9ef…37c5`](https://sepolia.etherscan.io/tx/0x08d6c9ef458d86e87121774a2c57439855f76b8b918ab6275e4733aee44237c5) (report #1), validated in [`0xab1eef21…36c0`](https://sepolia.etherscan.io/tx/0xab1eef2179649bfc7f8d32d31b3594f9a4cad7d1c5806f24dc0714dfc05c36c0) |
 | Dispute bond | 0.001 Sepolia ETH |
 
 Only the report hash, parent hash, status, timestamps and reporter address are stored on-chain. URLs, messages
 and any personal data stay off-chain. Each report includes a random 32-byte salt, so the hash can't be
 brute-forced back to a URL.
 
-Roles: the deployer is owner and the only validator. The backend relayer can only submit reports. Anyone can
+Roles: the deployer is owner and the only validator. The backend relayer is the only authorised reporter (v3):
+nobody else can submit, so a stranger can't register a forged report or front-run ours. Anyone can
 dispute a report from their own wallet by posting the bond: a validator's ruling returns it (dispute upheld, report
 Rejected) or keeps it (report Validated), and a reporter's revision also returns it. Collect returned bonds with
 `withdraw()`. Re-assessing a link registers a new version whose `parentHash` points at the old one, which becomes
-Superseded. v1 (`0x22Cc4217…73bc`, no bond) is retired but still readable. Machine-readable details are in [`contracts/deployments/sepolia.json`](contracts/deployments/sepolia.json).
+Superseded. v1 (`0x22Cc4217…73bc`) and v2 (`0x46509457…BbB4`) are retired but still readable. Machine-readable details are in [`contracts/deployments/sepolia.json`](contracts/deployments/sepolia.json).
 
 ## Verify a report yourself
 
 ```bash
 uv run verify/verify.py --report backend/tests/fixtures/sample_report.json \
   --rpc https://ethereum-sepolia-rpc.publicnode.com \
-  --address 0x465094577Fe42BD31d705581bD3baAB51397BbB4
+  --address 0x5De4Cd6F651A4D80ddA16fc70431dd669621BeeA \
+  --relayer 0x1B7c212ffC6FA799fE6131462F2C05046B8a848e
 ```
 
 `verify.py` computes `keccak256(RFC8785(report.json))`, looks it up in the registry, and prints `MATCH` with
-the on-chain status, timestamp and Etherscan link (exit 0), or `MISMATCH` (exit 1). Change one character
+the on-chain status, timestamp and Etherscan link (exit 0), or `MISMATCH` (exit 1). It also checks on-chain that the reporter is
+authorised by the registry, and `--relayer` (CyberMatrix's relayer, from `contracts/deployments/sepolia.json`) pins
+the exact address: any other reporter is `UNTRUSTED_REPORTER` (exit 1). Change one character
 in the JSON and it reports `MISMATCH`. It needs only `web3`, `rfc8785` and `eth-hash`. Without `uv`, run
 `pip install -r verify/requirements.txt` and use `python verify/verify.py …`.
 

@@ -27,6 +27,7 @@ PHISH = "https://sbi.co.in.kyc-verify-now.top/login?ref=sms"
 
 class FakeChain:
     address = "0x465094577Fe42BD31d705581bD3baAB51397BbB4"  # v2
+    relayer_address = "0xRELAYER"
 
     def __init__(self):
         self.reports: dict[str, SimpleNamespace] = {}

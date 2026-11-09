@@ -20,6 +20,7 @@ from app.correlation import similarity
 from app.db import IndicatorRow, RegistryRow, ReportRow
 from app.engine import risk
 from app.schemas import AssessmentReport, Coverage, Finding, Indicator, RiskClass, SubjectType
+from app.urlutil import URLParseError, parse_url, registrable_domain
 
 SOURCE = "local:correlation"
 SPECIFIC = ("domain", "email", "phone", "upi_id", "crypto_address")
@@ -53,6 +54,25 @@ async def _matches(db: AsyncSession, pairs: list[tuple[str, str]], own_id: str):
     return (await db.execute(q)).all()
 
 
+async def _drop_redirect_only_domains(db: AsyncSession, rows):
+    """Keep a prior report's `domain` match only if that domain was a *subject* of the prior report (the host of a
+    URL that was submitted or appeared in a submitted message), not merely a host its redirect chain passed through.
+    Anyone can make a phishing URL redirect to a victim's homepage; without this, validating that phishing report
+    would make the victim's own domain CORR.VALIDATED_MATCH (confirmed_malicious)."""
+    ids = {r[0] for r in rows if r[1] == "domain"}
+    if not ids:
+        return rows
+    q = select(IndicatorRow.report_id, IndicatorRow.normalized).where(
+        IndicatorRow.type == "url", IndicatorRow.report_id.in_(ids))
+    subjects: dict[str, set[str]] = {}
+    for rid, url in (await db.execute(q)).all():
+        try:
+            subjects.setdefault(rid, set()).add(registrable_domain(parse_url(url).host))
+        except URLParseError:
+            continue
+    return [r for r in rows if r[1] != "domain" or r[2] in subjects.get(r[0], set())]
+
+
 def _ev(kind_desc: str, matches: list[tuple[str, str, str]]) -> list:
     """matches: (report_id, type, normalized). One evidence item per indicator type."""
     out = []
@@ -74,6 +94,7 @@ async def correlation_findings(db: AsyncSession, report: AssessmentReport, idx: 
     if not pairs:
         return [], []
     rows = await _matches(db, pairs, report.report_id)
+    rows = await _drop_redirect_only_domains(db, rows)
     findings: list[Finding] = []
     related: list[str] = []
 

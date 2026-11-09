@@ -91,7 +91,8 @@ Check IDs and severities live in `docs/RISK_ENGINE.md`. That table is the single
 
 - `enum Status { Submitted, Disputed, Validated, Rejected, Superseded }`
 - `struct Report { bytes32 reportHash; bytes32 parentHash; address reporter; uint64 createdAt; Status status; }`
-- `submitReport(bytes32 reportHash, bytes32 parentHash) returns (uint256 id)`. Reverts on duplicate hash.
+- `submitReport(bytes32 reportHash, bytes32 parentHash) returns (uint256 id)`: authorised reporters only
+  (`isReporter`, else `NotReporter`). Reverts on duplicate hash.
   If parentHash ≠ 0, the parent must exist and be owned by the sender; the parent becomes Superseded.
 - `disputeReport(uint256 id, bytes32 reasonHash) payable`: anyone, with exactly `disputeBond` wei; Submitted/Validated → Disputed.
   Sent from the user's own wallet (frontend `lib/wallet.ts`); the backend only stores the redacted reason text.
@@ -99,7 +100,7 @@ Check IDs and severities live in `docs/RISK_ENGINE.md`. That table is the single
   Rejected → disputer, Validated → owner. Superseding a disputed report credits the disputer. `withdraw()` pays out
   (the only external call; checks-effects-interactions). `setDisputeBond` is owner-only.
 - `getReport(id)`, `idOfHash(bytes32)`. Events for every state change.
-- Owner manages validators. Solidity ^0.8.24, no upgradability, no external calls except `withdraw`. Foundry tests for every
+- Owner manages validators and reporters (`addReporter`/`removeReporter`). Solidity ^0.8.24, no upgradability, no external calls except `withdraw`. Foundry tests for every
   revert path. Deploy to Sepolia and verify the source on Etherscan.
 
 ## Report hashing (must match verify.py exactly)
@@ -115,7 +116,7 @@ cross-language number serialisation drift.
 docker compose up --build
 cd backend && uv run pytest -q
 cd contracts && forge test -vv && forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
-python verify/verify.py --report report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS
+python verify/verify.py --report report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS --relayer <relayer from contracts/deployments/sepolia.json>
 REPORT_ID=1 STATUS=validated forge script script/SetStatus.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast  # in contracts/
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
 ```
@@ -127,8 +128,8 @@ RELAYER_PRIVATE_KEY, DEPLOYER_PRIVATE_KEY, REGISTRY_ADDRESS, ETHERSCAN_API_KEY, 
 Never commit `.env`. Never log keys or full messages.
 
 Roles: `DEPLOYER_PRIVATE_KEY` deploys the registry and is its owner + validator (used by `script/Deploy.s.sol`
-and `script/SetStatus.s.sol`). `RELAYER_PRIVATE_KEY` is used only by the backend to call `submitReport`; it has
-no on-chain role. After changing the contract, run `contracts/script/export_abi.sh` to refresh the backend ABI.
+and `script/SetStatus.s.sol`). `RELAYER_PRIVATE_KEY` is used only by the backend to call `submitReport`; its only
+on-chain role is reporter (granted by `script/Deploy.s.sol`). After changing the contract, run `contracts/script/export_abi.sh` to refresh the backend ABI.
 
 ## Library and source choices (see docs/DECISIONS.md for why)
 

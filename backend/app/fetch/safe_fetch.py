@@ -4,9 +4,10 @@ Layers, outermost first:
 1. URL policy: http/https only, ports 80/443/8080/8443, userinfo stripped, non-canonical numeric hosts
    (2130706433, 0177.0.0.1) and metadata/internal hostnames rejected.
 2. `resolve_and_validate`: resolve once and reject if ANY address is non-global or explicitly blocked.
-3. httpx-secure: the connection itself is pinned to an IP that is re-validated by the library (is_global + NAT64)
-   and by our `_connect_policy` validator (ports + our blocklist). This defeats DNS rebinding between step 2
-   and the connect.
+3. Pinning: the request URL names the IP validated in step 2 (Host header, SNI and certificate checks keep the
+   hostname), so there is exactly one DNS lookup per hop. httpx-secure re-validates that literal IP (is_global +
+   NAT64) plus our `_connect_policy` (ports + blocklist) at connect time. Handing it a hostname instead would
+   make it resolve again and open a TCP probe to the *second* answer before validating it: a DNS-rebinding hole.
 4. Manual redirect loop (max 5 hops), re-running 1-3 for every hop; 5 s per hop, 15 s total, 2 MB decoded body
    cap, text/html and text/plain only (binary mode for OCSP/CRL only).
 """
@@ -17,7 +18,7 @@ import ipaddress
 import socket
 import ssl
 from dataclasses import dataclass, field
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlunsplit
 
 import httpx
 from httpx_secure import SSRFProtectionError, httpx_ssrf_protection
@@ -189,10 +190,28 @@ def _is_tls_verify_error(e: BaseException) -> bool:
     return False
 
 
+def _pinned_request(url: ParsedURL, pinned_ip: str | None, headers: dict[str, str]
+                    ) -> tuple[str, dict[str, str], dict[str, str]]:
+    """(request URL, headers, extensions). With a pinned IP the URL names the IP, so httpx-secure validates and
+    connects to exactly that address (no second lookup and no TCP probe to whatever a rebinding DNS answers next).
+    Host header, SNI and certificate hostname checks still use the original hostname."""
+    if pinned_ip is None or url.ip is not None:
+        return url.url_without_userinfo(), headers, {}
+    ip = ipaddress.ip_address(pinned_ip)
+    ip_host = f"[{ip}]" if ip.version == 6 else str(ip)
+    netloc = f"{ip_host}:{url.port}" if url.explicit_port else ip_host
+    target = urlunsplit((url.scheme, netloc, url.path or "/", url.query, ""))
+    host_hdr = f"{url.host}:{url.port}" if url.explicit_port else url.host
+    ext = {"sni_hostname": url.host} if url.scheme == "https" else {}
+    return target, {k: v for k, v in headers.items() if k.lower() != "host"} | {"Host": host_hdr}, ext
+
+
 async def _send_hop(url: ParsedURL, *, verify: bool, method: str, body: bytes | None,
-                    headers: dict[str, str], allowed_types: tuple[str, ...]) -> _HopResponse:
+                    headers: dict[str, str], allowed_types: tuple[str, ...],
+                    pinned_ip: str | None = None) -> _HopResponse:
+    target, headers, extensions = _pinned_request(url, pinned_ip, headers)
     async with make_client(verify=verify) as client:
-        async with client.stream(method, url.url_without_userinfo(), headers=headers, content=body) as resp:
+        async with client.stream(method, target, headers=headers, content=body, extensions=extensions) as resp:
             server_ip = None
             ns = resp.extensions.get("network_stream")
             if ns is not None:
@@ -230,10 +249,18 @@ async def _attempt(url: ParsedURL, *, verify: bool, method: str, body: bytes | N
     """Policy + DNS pre-check + send. Every attempt (including the verify=False retry) runs the full pre-check."""
     check_url_policy(url)
     addrs = await resolve_and_validate(url.host, url.port)
+    # Try IPv4 first (IPv6 egress is often missing), at most two addresses, only on plain connect failures.
+    candidates = sorted(addrs, key=lambda a: a.version)[:2]
     async with asyncio.timeout(HOP_TIMEOUT_S):
-        resp = await _send_hop(url, verify=verify, method=method, body=body, headers=headers,
-                               allowed_types=allowed_types)
-    return resp, (resp.server_ip or str(addrs[0]))
+        for i, ip in enumerate(candidates):
+            try:
+                resp = await _send_hop(url, verify=verify, method=method, body=body, headers=headers,
+                                       allowed_types=allowed_types, pinned_ip=str(ip))
+                break
+            except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+                if i == len(candidates) - 1 or _is_tls_verify_error(e):
+                    raise
+    return resp, (resp.server_ip or str(ip))
 
 
 # ---------------- public API ----------------

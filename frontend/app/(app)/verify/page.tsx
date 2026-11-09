@@ -93,7 +93,7 @@ export default function VerifyPage() {
       <div className="mt-6 border-t border-rule pt-6">
         <p className="font-medium">Or check a report file</p>
         <p className="mt-1 text-sm text-muted">
-          The file is hashed in your browser. Edit it and verify again to see a mismatch.
+          The server hashes the file exactly as verify/verify.py does. Edit it and verify again to see a mismatch.
         </p>
         <input
           id="file"
@@ -131,7 +131,9 @@ export default function VerifyPage() {
               <p className="mt-1 text-sm">
                 {res.match
                   ? "The report is identical to the version registered on-chain."
-                  : res.onchain_hash
+                  : res.onchain_hash && res.onchain_hash.toLowerCase() === res.computed_hash.toLowerCase()
+                    ? "This hash was registered by an address that is not CyberMatrix's relayer, so it is not a CyberMatrix report."
+                    : res.onchain_hash
                     ? "This report differs from the version registered on-chain. It has been changed, or it is a different report."
                     : "No on-chain record exists for this report, so there is nothing to match."}
               </p>

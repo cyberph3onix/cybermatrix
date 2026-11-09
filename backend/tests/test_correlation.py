@@ -10,7 +10,8 @@ from app.schemas import AssessmentReport, CheckRun, Indicator, RegistryRecord, R
 SCAM = "kyc-verify-now.top"
 
 
-def mk(classification="suspicious", inds=(("domain", SCAM),), score=20):
+def mk(classification="suspicious", inds=(("url", f"https://{SCAM}/login"), ("domain", SCAM)), score=20):
+    # Real reports always carry a `url` indicator for each submitted link next to its `domain`.
     runs = [CheckRun(check_group=g, status="completed", source="t", duration_ms=1, weight=w) for g, w in cov.WEIGHTS.items()]
     return AssessmentReport(
         subject_type=SubjectType.URL, subject="https://x", normalized_subject="https://x",

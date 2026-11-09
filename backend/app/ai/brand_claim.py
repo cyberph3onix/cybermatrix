@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable
+from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable, untrusted
 
 SYSTEM = (
     "You read the visible text of a web page and extract three facts about it. " + INJECTION_RULES + " "
@@ -27,7 +27,7 @@ class BrandClaim(BaseModel):
 
 async def extract_claim(llm: LlmClient, redacted_text: str) -> BrandClaim:
     """Raises LlmUnavailable on any LLM or validation failure."""
-    raw = await llm.call_tool(system=SYSTEM, user=f"<untrusted_input>\n{redacted_text[:4000]}\n</untrusted_input>",
+    raw = await llm.call_tool(system=SYSTEM, user=untrusted(redacted_text[:4000]),
                               tool_name="report_page_claim", schema=BrandClaim.model_json_schema(), max_tokens=300)
     try:
         c = BrandClaim.model_validate(raw)

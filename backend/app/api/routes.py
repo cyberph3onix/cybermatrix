@@ -28,7 +28,7 @@ from app.pipeline_upi import UpiError, assess_upi, is_upi
 from app.pipeline_upi import finalize as finalize_upi
 from app.qr import QrError, decode_qr
 from app.ratelimit import client_ip, limit_dependency
-from app.registry.chain import ZERO_HASH, ChainClient, ChainError, ChainUnavailable
+from app.registry.chain import ZERO_HASH, ChainClient, ChainError, ChainUnavailable, reporter_trusted
 from app.registry.sync import on_contract
 from app.schemas import (
     AssessmentReport,
@@ -444,9 +444,12 @@ async def _verify(st: AppState, db: AsyncSession, report_id: str, canonical: byt
         explorer = await chain.explorer_url(tx)
     except (ChainError, ChainUnavailable) as e:
         raise _chain_error(e) from None
+    # Anyone can call submitReport with the hash of a forged report.json. It only verifies as a CyberMatrix report
+    # if our relayer registered it.
     return VerificationResult(
         report_id=report_id, computed_hash=computed, onchain_hash=onchain.report_hash if onchain else None,
-        match=onchain is not None, onchain_status=onchain.status if onchain else None,
+        match=onchain is not None and reporter_trusted(chain, onchain.reporter),
+        onchain_status=onchain.status if onchain else None,
         onchain_created_at=onchain.created_at if onchain else None, tx_hash=tx, explorer_url=explorer)
 
 

@@ -9,6 +9,8 @@ pragma solidity ^0.8.24;
 ///      A validator's ruling settles it: Rejected (dispute upheld) returns the bond to the disputer; Validated
 ///      (dispute failed) forfeits it to the owner. A reporter's revision (supersede) also returns it. Payouts are
 ///      pull-based: the only external call is `withdraw`, which zeroes the balance before sending.
+///      v3: only reporters the owner authorised may submit. Open submission let anyone register the hash of a
+///      report.json they wrote (a forged MATCH) or copy a pending hash from the mempool and register it first.
 contract ThreatRegistry {
     enum Status {
         Submitted,
@@ -29,6 +31,7 @@ contract ThreatRegistry {
     // ---------- errors ----------
     error NotOwner();
     error NotValidator();
+    error NotReporter();
     error ZeroAddress();
     error ZeroHash();
     error DuplicateHash(bytes32 reportHash);
@@ -41,6 +44,8 @@ contract ThreatRegistry {
     error InvalidTransition(Status from, Status to);
     error AlreadyValidator(address account);
     error NotAValidator(address account);
+    error AlreadyReporter(address account);
+    error NotAReporter(address account);
     error WrongBond(uint256 sent, uint256 required);
     error NothingToWithdraw();
     error TransferFailed();
@@ -52,6 +57,8 @@ contract ThreatRegistry {
     event StatusChanged(uint256 indexed id, Status from, Status to, address indexed by);
     event ValidatorAdded(address indexed account);
     event ValidatorRemoved(address indexed account);
+    event ReporterAdded(address indexed account);
+    event ReporterRemoved(address indexed account);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event DisputeBondChanged(uint256 previous, uint256 current);
     event DisputeResolved(uint256 indexed id, address indexed disputer, bool upheld, uint256 bond);
@@ -65,6 +72,7 @@ contract ThreatRegistry {
     // ---------- storage ----------
     address public owner;
     mapping(address => bool) public isValidator;
+    mapping(address => bool) public isReporter;
 
     Report[] private _reports; // index 0 is an unused sentinel
     mapping(bytes32 => uint256) private _idOfHash;
@@ -83,6 +91,11 @@ contract ThreatRegistry {
         _;
     }
 
+    modifier onlyReporter() {
+        if (!isReporter[msg.sender]) revert NotReporter();
+        _;
+    }
+
     constructor() {
         owner = msg.sender;
         _reports.push(); // sentinel so real ids start at 1
@@ -91,8 +104,9 @@ contract ThreatRegistry {
 
     // ---------- reports ----------
 
-    /// @notice Commit a report hash. If `parentHash` is non-zero, the caller must own the parent, which becomes Superseded.
-    function submitReport(bytes32 reportHash, bytes32 parentHash) external returns (uint256 id) {
+    /// @notice Commit a report hash (authorised reporters only). If `parentHash` is non-zero, the caller must own the
+    ///         parent, which becomes Superseded.
+    function submitReport(bytes32 reportHash, bytes32 parentHash) external onlyReporter returns (uint256 id) {
         if (reportHash == bytes32(0)) revert ZeroHash();
         if (_idOfHash[reportHash] != 0) revert DuplicateHash(reportHash);
 
@@ -194,6 +208,20 @@ contract ThreatRegistry {
         if (!isValidator[account]) revert NotAValidator(account);
         isValidator[account] = false;
         emit ValidatorRemoved(account);
+    }
+
+    function addReporter(address account) external onlyOwner {
+        if (account == address(0)) revert ZeroAddress();
+        if (isReporter[account]) revert AlreadyReporter(account);
+        isReporter[account] = true;
+        emit ReporterAdded(account);
+    }
+
+    /// @notice Revoking a reporter does not touch reports it already submitted.
+    function removeReporter(address account) external onlyOwner {
+        if (!isReporter[account]) revert NotAReporter(account);
+        isReporter[account] = false;
+        emit ReporterRemoved(account);
     }
 
     function setDisputeBond(uint96 bond) external onlyOwner {

@@ -33,7 +33,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
       <div role="alert" className="rounded-md border border-c-mal bg-c-mal-tint p-4 text-c-mal-ink">
         <p className="font-medium">{err}</p>
         <p className="mt-1 text-sm">
-          Check the address, or <Link className="underline" href="/">start a new investigation</Link>.
+          Check the address, or <Link className="underline" href="/investigate">start a new investigation</Link>.
         </p>
       </div>
     );

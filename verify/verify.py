@@ -8,7 +8,9 @@
     python verify/verify.py --report report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS
 
 Computes keccak256(RFC8785-JCS(report)) and checks it against the ThreatRegistry contract.
-Exit codes: 0 = MATCH, 1 = MISMATCH, 2 = usage / file / RPC error.
+Exit codes: 0 = MATCH, 1 = MISMATCH or UNTRUSTED_REPORTER, 2 = usage / file / RPC error.
+The registry only accepts reports from reporters its owner authorised; verify.py checks that on-chain
+(`isReporter`). Pass --relayer (CyberMatrix's relayer address) to also pin the exact reporter.
 """
 
 from __future__ import annotations
@@ -31,6 +33,11 @@ NOTE = (
     "A matching hash proves this report is unchanged since it was registered. "
     "It does not prove the report's conclusions are true."
 )
+UNCHECKED = (
+    "reporter not checked: this registry has no reporter role, so anyone could have registered this hash. "
+    "Pass --relayer with CyberMatrix's relayer address (contracts/deployments/sepolia.json)"
+)
+REVOKED = "the reporter that registered this report is no longer authorised by the registry owner"
 
 # Minimal ABI: the two read functions plus the event used to find the registering transaction.
 ABI: list[dict[str, Any]] = [
@@ -59,6 +66,13 @@ ABI: list[dict[str, Any]] = [
                 ],
             }
         ],
+    },
+    {
+        "type": "function",
+        "name": "isReporter",
+        "stateMutability": "view",
+        "inputs": [{"name": "account", "type": "address"}],
+        "outputs": [{"name": "", "type": "bool"}],
     },
     {
         "type": "event",
@@ -116,7 +130,16 @@ def _find_tx(w3: Any, contract: Any, report_id: int, created_at: int, from_block
     return None
 
 
-def verify(report_path: Path, rpc: str, address: str, from_block: int = 0) -> dict[str, Any]:
+def _is_reporter(contract: Any, reporter: str) -> bool | None:
+    """On-chain reporter role, or None if this registry predates it (the call reverts / has no such function)."""
+    try:
+        return bool(contract.functions.isReporter(reporter).call())
+    except Exception:  # noqa: BLE001 - older deployment without isReporter
+        return None
+
+
+def verify(report_path: Path, rpc: str, address: str, from_block: int = 0,
+           relayer: str | None = None) -> dict[str, Any]:
     from web3 import Web3
 
     computed = compute_hash(load_report(report_path))
@@ -151,10 +174,19 @@ def verify(report_path: Path, rpc: str, address: str, from_block: int = 0) -> di
         status=STATUS_NAMES[status] if status < len(STATUS_NAMES) else f"unknown({status})",
         created_at=datetime.fromtimestamp(created_at, tz=UTC).isoformat().replace("+00:00", "Z"),
     )
-    if onchain.lower() == computed.lower():
-        result["result"] = "MATCH"
-    else:  # should be impossible for a correct contract; reported rather than trusted
+    if onchain.lower() != computed.lower():  # should be impossible for a correct contract; reported, not trusted
         result["reason"] = "on-chain record hash differs from computed hash"
+    elif relayer is None or reporter.lower() == relayer.lower():
+        result["result"] = "MATCH"
+        authorised = _is_reporter(contract, reporter)
+        result["reporter_authorised"] = authorised
+        if authorised is None and relayer is None:
+            result["warning"] = UNCHECKED  # old registry: submitReport was open to every address
+        elif authorised is False:
+            result["warning"] = REVOKED
+    else:
+        result["result"] = "UNTRUSTED_REPORTER"
+        result["reason"] = f"registered by {reporter}, not by the CyberMatrix relayer {relayer}"
 
     tx = _find_tx(w3, contract, report_id, created_at, from_block)
     if tx:
@@ -177,6 +209,8 @@ def _print_human(r: dict[str, Any]) -> None:
         print(f"  reporter      : {r['reporter']}")
         if int(r["parent_hash"], 16):
             print(f"  supersedes    : {r['parent_hash']}")
+    if r.get("warning"):
+        print(f"  warning       : {r['warning']}")
     print(f"  contract      : {r['contract']} (chain {r['chain_id']})")
     if r.get("tx_hash"):
         print(f"  tx            : {r['tx_hash']}")
@@ -191,11 +225,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--rpc", required=True, help="Ethereum JSON-RPC URL (e.g. a Sepolia endpoint)")
     p.add_argument("--address", required=True, help="ThreatRegistry contract address")
     p.add_argument("--from-block", type=int, default=0, help="first block to search for the registering tx")
+    p.add_argument("--relayer", help="expected reporter address (CyberMatrix's relayer); anything else is "
+                                     "UNTRUSTED_REPORTER, because anyone can register a hash")
     p.add_argument("--json", action="store_true", help="print machine-readable JSON")
     args = p.parse_args(argv)
 
     try:
-        result = verify(args.report, args.rpc, args.address, args.from_block)
+        result = verify(args.report, args.rpc, args.address, args.from_block, args.relayer)
     except (OSError, ValueError) as e:  # unreadable file, bad JSON, bad address
         print(f"ERROR: {e}", file=sys.stderr)
         return EXIT_ERROR

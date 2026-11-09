@@ -7,8 +7,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.ai.explain import _PRODUCT, _SAFE
-from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable
+from app.ai.explain import reassures
+from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable, untrusted
 from app.schemas import Cluster
 
 SYSTEM = (
@@ -36,13 +36,13 @@ def cache_key(c: Cluster) -> str:
 
 
 async def summarize_one(llm: LlmClient, c: Cluster) -> str:
-    raw = await llm.call_tool(system=SYSTEM, user=f"<untrusted_input>\n{json.dumps(facts(c))}\n</untrusted_input>",
+    raw = await llm.call_tool(system=SYSTEM, user=untrusted(json.dumps(facts(c))),
                               tool_name="cluster_summary", schema=SummaryOut.model_json_schema(), max_tokens=300)
     try:
         text = SummaryOut.model_validate(raw).summary.strip()
     except ValidationError:
         raise LlmUnavailable("llm output failed schema validation") from None
-    if not text or _SAFE.search(_PRODUCT.sub("", text)):  # rule 3
+    if not text or reassures(text):  # rule 3
         raise LlmUnavailable("summary rejected")
     return text
 

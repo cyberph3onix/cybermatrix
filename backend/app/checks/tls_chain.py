@@ -330,7 +330,11 @@ def analyze(scan: TlsScan, now: datetime) -> tuple[list[Finding], CertificateSum
 
     moz = scan.store_results.get(MOZILLA)
     chain_valid = bool(moz) if moz is not None else any(scan.store_results.values())
-    if scan.store_results and not chain_valid and not self_signed:
+    # A server that omits its intermediate fails path validation in every store (no AIA chasing), but browsers
+    # fetch the intermediate and connect fine. That is TLS.INCOMPLETE_CHAIN (config, low), not an untrusted root:
+    # calling it UNTRUSTED_ROOT (high) put well-known sites one finding away from high_risk.
+    incomplete = not self_signed and find_issuer(leaf, scan.received_chain) is None
+    if scan.store_results and not chain_valid and not self_signed and not incomplete:
         err = scan.store_errors.get(MOZILLA, "")
         explained = expired or not_yet or any(w in err.lower() for w in ("expired", "not yet valid"))
         if not explained:
@@ -367,13 +371,16 @@ def analyze(scan: TlsScan, now: datetime) -> tuple[list[Finding], CertificateSum
                                 "SHA-1/MD5 signatures can be forged.",
                                 "Site owners should reissue with a SHA-256 signature."))
 
-    if not self_signed and find_issuer(leaf, scan.received_chain) is None:
+    if incomplete:
         out.append(make_finding("TLS.INCOMPLETE_CHAIN", "Server does not send its intermediate certificate",
                                 _ev(f"Issuer '{_cn(leaf.issuer)}' not in the presented chain",
                                     {"issuer": leaf.issuer.rfc4514_string(), "presented": len(scan.received_chain)},
                                     now),
                                 "Some clients will fail to connect. This is a configuration issue, not a compromise.",
-                                "Site owners should serve the full chain."))
+                                "Site owners should serve the full chain.",
+                                limitation=None if chain_valid else
+                                "With the intermediate missing we could not confirm that the chain leads to a "
+                                "trusted root."))
 
     age = now - nb
     if timedelta(0) <= age < timedelta(days=7):
@@ -529,6 +536,9 @@ async def run(ctx: AssessmentContext) -> CheckResult:
     try:
         scheme, host, port = await _target(ctx)
         if scheme != "https":
+            if not (await ctx.fetch()).final_url:  # nothing was served, so we don't know that it lacks HTTPS
+                return make_run(GROUP, CheckStatus.UNAVAILABLE, SOURCE, t0,
+                                "page not retrieved over http; HTTPS support unknown"), []
             f = make_finding("TLS.NO_HTTPS", "Site does not use HTTPS",
                              [evidence("http_redirect", f"{host} was served over plain HTTP", SOURCE,
                                        {"host": host}, observed_at=ctx.now)],

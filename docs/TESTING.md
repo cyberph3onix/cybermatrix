@@ -126,7 +126,7 @@ Wording alone never goes above `suspicious` (heuristic cap).
 Read-only checks cost nothing and send nothing:
 
 ```bash
-python verify/verify.py --report backend/tests/fixtures/sample_report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS   # MATCH
+python verify/verify.py --report backend/tests/fixtures/sample_report.json --rpc $SEPOLIA_RPC_URL --address $REGISTRY_ADDRESS --relayer 0x1B7c212ffC6FA799fE6131462F2C05046B8a848e   # MATCH
 ```
 
 Change one character in the file and it reports `MISMATCH` (hash not registered). The `/verify` page does the same
@@ -156,7 +156,7 @@ Checked so far (Chrome, iframes at 320, 360, 375 and 412 px, on all 8 page types
 
 ## Browser checklist (done by hand; re-run before the demo)
 
-- Home: type a link, a message, an email; the Investigate button must not move while you type.
+- Investigate (`/investigate`): type a link, a message, an email; the Investigate button must not move while you type.
 - Upload a QR image with a link, and one with a `upi://pay?pa=...` payload (inconclusive, with payee advice).
 - `/verify`: look up a report ID, upload `sample_report.json` (MATCH), upload an edited copy (MISMATCH).
 - A report page at 390 px wide: no horizontal scroll, evidence expands, limitations visible.

@@ -23,9 +23,10 @@ CONTRACTS = ROOT / "contracts"
 FIXTURE = ROOT / "backend" / "tests" / "fixtures" / "sample_report.json"
 EXPECTED = "0xe8db935c3a232b5389c14869c1d0ace58d0f38c6231d1ecff0fecdceb2ad91d3"
 
-# anvil's deterministic dev accounts 0 (deployer/validator) and 1 (relayer)
+# anvil's deterministic dev accounts 0 (deployer/validator), 1 (relayer) and 2 (anyone else)
 DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 RELAYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+OTHER_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
 
 sys.path.insert(0, str(ROOT / "verify"))
 import verify  # noqa: E402
@@ -123,7 +124,9 @@ def chain():
     )["contractAddress"]
     reg = w3.eth.contract(address=address, abi=artifact["abi"])
 
+    deployer = w3.eth.account.from_key(DEPLOYER_KEY).address
     relayer = w3.eth.account.from_key(RELAYER_KEY).address
+    send(DEPLOYER_KEY, reg.functions.addReporter(relayer).build_transaction({"from": deployer}))
     send(
         RELAYER_KEY,
         reg.functions.submitReport(bytes.fromhex(EXPECTED[2:]), b"\x00" * 32).build_transaction({"from": relayer}),
@@ -214,3 +217,68 @@ def test_e2e_bad_rpc_exits_2(chain: dict) -> None:
     )
     assert p.returncode == 2
     assert "ERROR" in p.stderr
+
+
+# ---------- forged reports registered by someone other than the relayer ----------
+
+
+def _forged(tmp_path: Path) -> Path:
+    """A fabricated report.json: e.g. claims a well-known site is confirmed_malicious."""
+    data = json.loads(FIXTURE.read_text())
+    data["classification"] = "confirmed_malicious"
+    data["subject"] = data["normalized_subject"] = "https://www.google.com/"
+    p = tmp_path / "forged.json"
+    p.write_text(json.dumps(data))
+    return p
+
+
+@needs_foundry
+def test_e2e_stranger_cannot_register_a_forged_report(chain: dict, tmp_path: Path) -> None:
+    w3, reg = chain["w3"], chain["reg"]
+    stranger = w3.eth.account.from_key(OTHER_KEY).address
+    h = bytes.fromhex(verify.compute_hash(verify.load_report(_forged(tmp_path)))[2:])
+    with pytest.raises(Exception, match="NotReporter|revert|0x"):
+        reg.functions.submitReport(h, b"\x00" * 32).estimate_gas({"from": stranger})
+    assert reg.functions.idOfHash(h).call() == 0
+
+
+@needs_foundry
+def test_e2e_forged_report_registered_by_another_address_is_not_a_match(chain: dict, tmp_path: Path) -> None:
+    w3, reg, send = chain["w3"], chain["reg"], chain["send"]
+    forged = _forged(tmp_path)
+    # Another reporter the owner authorised (e.g. a second deployment's relayer) is still not CyberMatrix's relayer.
+    deployer = w3.eth.account.from_key(DEPLOYER_KEY).address
+    other = w3.eth.account.from_key(OTHER_KEY).address
+    send(DEPLOYER_KEY, reg.functions.addReporter(other).build_transaction({"from": deployer}))
+    h = bytes.fromhex(verify.compute_hash(verify.load_report(forged))[2:])
+    send(OTHER_KEY, reg.functions.submitReport(h, b"\x00" * 32).build_transaction({"from": other}))
+    relayer = w3.eth.account.from_key(RELAYER_KEY).address
+
+    p = _run(forged, chain, "--relayer", relayer)
+    assert p.returncode == 1, p.stdout + p.stderr
+    assert p.stdout.startswith("UNTRUSTED_REPORTER"), p.stdout
+
+    genuine = _run(FIXTURE, chain, "--relayer", relayer.lower())
+    assert genuine.returncode == 0 and genuine.stdout.startswith("MATCH"), genuine.stdout
+
+
+@needs_foundry
+def test_e2e_without_relayer_flag_checks_the_reporter_role_on_chain(chain: dict) -> None:
+    out = json.loads(_run(FIXTURE, chain, "--json").stdout)
+    assert out["result"] == "MATCH"
+    assert out["reporter_authorised"] is True
+    assert "warning" not in out
+
+
+@needs_foundry
+def test_e2e_revoked_reporter_warns(chain: dict) -> None:
+    w3, reg, send = chain["w3"], chain["reg"], chain["send"]
+    deployer = w3.eth.account.from_key(DEPLOYER_KEY).address
+    relayer = w3.eth.account.from_key(RELAYER_KEY).address
+    send(DEPLOYER_KEY, reg.functions.removeReporter(relayer).build_transaction({"from": deployer}))
+    try:
+        out = json.loads(_run(FIXTURE, chain, "--json").stdout)
+        assert out["result"] == "MATCH" and out["reporter_authorised"] is False
+        assert "no longer authorised" in out["warning"]
+    finally:
+        send(DEPLOYER_KEY, reg.functions.addReporter(relayer).build_transaction({"from": deployer}))

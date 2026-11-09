@@ -16,7 +16,7 @@ from selectolax.lexbor import LexborHTMLParser
 from app.brands import Brand, BrandIndex
 from app.checks.base import AssessmentContext, CheckResult, evidence, make_finding, make_run
 from app.schemas import CheckStatus, Finding
-from app.urlutil import URLParseError, parse_url, registrable_domain
+from app.urlutil import URLParseError, parse_url, registrable_domain, split_domain
 
 SOURCE = "local:page_inspector"
 GROUP = "page.content"
@@ -117,9 +117,13 @@ def analyze(html: str, page_url: str, idx: BrandIndex) -> list[Finding]:
     official = idx.official_brand(u.host, u.path)
     out: list[Finding] = []
     trusted_host = idx.allowlisted(u.host, u.path or "/")
+    own_label = split_domain(u.host)[1].lower()
     # A logo alone is weak identity: partner / payment-method logos are normal on big sites. On an allowlisted host
     # only the title and og:site_name count, which still catches a compromised legitimate site hosting a fake page.
+    # A top-10k site whose domain label IS the brand's label (amazon.co.uk, google.co.uk) is that brand's regional
+    # site, even if brands.json doesn't list it; a lookalike can't be in the top 10k under the brand's exact label.
     claims = [c for c in _claims(facts, idx) if (official is None or official.id != c[0].id)
+              and not (trusted_host and own_label in c[0].labels)
               and not (trusted_host and c[1] == "logo_alt")]
     fields = sorted(set(facts.sensitive_fields))
 
@@ -143,10 +147,13 @@ def analyze(html: str, page_url: str, idx: BrandIndex) -> list[Finding]:
 
     for action, f in facts.form_actions:
         try:
-            areg = registrable_domain(parse_url(action).host)
+            a = parse_url(action)
         except URLParseError:
             continue
-        if areg != page_reg:
+        areg = registrable_domain(a.host)
+        # Single sign-on between two allowlisted, non-abusable sites (youtube.com → accounts.google.com) is normal.
+        # A compromised top site posting to an unknown domain still fires.
+        if areg != page_reg and not (trusted_host and idx.allowlisted(a.host, a.path or "/")):
             out.append(make_finding(
                 "PAGE.FORM_ACTION_CROSS_DOMAIN", f"Sensitive form sends data to another site ({areg})",
                 [evidence("html_element", f"Form with {', '.join(sorted(set(f)))} submits to {areg}", SOURCE,

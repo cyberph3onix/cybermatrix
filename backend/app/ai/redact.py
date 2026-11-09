@@ -10,7 +10,12 @@ import re
 from dataclasses import dataclass, field
 
 _NAME = r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}"
+_AT = r"(?:\[\s*at\s*\]|\(\s*at\s*\)|\{\s*at\s*\})"
+_DOT = r"(?:\[\s*dot\s*\]|\(\s*dot\s*\)|\{\s*dot\s*\}|\.)"
 _RULES: list[tuple[str, re.Pattern[str]]] = [
+    # "john [at] gmail [dot] com", "ravi(at)example(dot)in", "priya at yahoo dot co dot in"
+    ("email", re.compile(r"[\w.+-]+\s*" + _AT + r"\s*[\w-]+(?:\s*" + _DOT + r"\s*[\w-]+)+"
+                         r"|\b[\w.+-]+\s+at\s+[\w-]+(?:\s+dot\s+[\w-]+)+", re.IGNORECASE)),
     ("email", re.compile(r"[\w.+-]+@(?:[\w-]+\.)+[A-Za-z]{2,}")),
     ("upi", re.compile(r"(?<![\w.@])[\w.-]{2,}@[A-Za-z][A-Za-z0-9]{1,20}\b(?!\.[A-Za-z])")),
     ("pan", re.compile(r"\b[A-Za-z]{5}\d{4}[A-Za-z]\b")),
@@ -24,6 +29,8 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
     ("ip", re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")),
     ("date", re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-](?:\d{4}|\d{2})\b")),
     ("phone", re.compile(r"(?<![\w.])(?:\+|00)?(?:91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b|(?<![\w.])\+\d{1,3}[\s-]?\d[\d\s-]{7,13}\d\b")),
+    # (555) 123-4567, 555-123-4567, 555.123.4567, +1 555 123 4567
+    ("phone", re.compile(r"(?<![\w.])(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]\d{4}(?![\w])")),
     ("number", re.compile(r"(?<![\w.])(?:\d[ .-]){9,}\d(?![\w.])")),  # digits split up to dodge the patterns above
     ("account", re.compile(r"\b\d{9,18}\b")),
     ("otp", re.compile(r"(?<![\w.,₹$])(?<!Rs )(?<!Rs\. )(?<!INR )\b\d{4,8}\b(?![\w.,]*\d)")),

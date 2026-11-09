@@ -72,6 +72,11 @@ Confidence:
 - **Abusable hosts never get dampening:** `abusable_hosts.txt` (sites.google.com, docs.google.com/forms,
   forms.gle, firebaseapp.com, web.app, pages.dev, netlify.app, vercel.app, github.io, IPFS gateways,
   ngrok-free.app, blogspot.com …).
+- **A brand's own regional site:** on an allowlisted, non-abusable host whose domain label equals one of a brand's
+  labels (`amazon.co.uk`, `outlook.office365.com`), that brand's name in the subdomain (`URL.BRAND_IN_SUBDOMAIN`) or
+  in the page title / og:site_name (`PAGE.*`) is not a claim on someone else's identity. Other brands still count.
+- **SSO:** `PAGE.FORM_ACTION_CROSS_DOMAIN` does not fire when both the page host and the form's action host are
+  allowlisted and not abusable (`youtube.com` → `accounts.google.com`).
 - Use `tldextract` with `include_psl_private_domains=True`, so `evil.github.io` ≠ `github.io`.
 - VirusTotal: ≥ 5 malicious engines = authoritative; 1–4 = medium heuristic (single-engine hits are noisy).
 - `TLS.INCOMPLETE_CHAIN` and old protocol versions are config issues (`tls_config`), not trust compromise.
@@ -103,7 +108,7 @@ Confidence:
 | DOMAIN.FAST_FLUX | domain | medium | heuristic | ≥ 5 A records across ≥ 3 distinct /16 networks with a TTL ≤ 300 s (DNS-over-HTTPS, dns.google) |
 | DOMAIN.FREE_DNS | domain | low | heuristic | Nameservers on a free/dynamic DNS provider, or the host is a dynamic-DNS subdomain |
 | PAGE.CREDENTIAL_FORM | phishing | high | technical | Password/OTP/card field on a page whose title/brand text claims a protected brand while the domain isn't official |
-| PAGE.FORM_ACTION_CROSS_DOMAIN | phishing | high | technical | Sensitive form posts to a different registrable domain |
+| PAGE.FORM_ACTION_CROSS_DOMAIN | phishing | high | technical | Sensitive form posts to a different registrable domain (not when both page and action host are allowlisted: SSO) |
 | PAGE.BRAND_MISMATCH | impersonation | medium | technical | Title/og:site_name claims a protected brand; domain not official (no credential form) |
 | PAGE.LLM_CLAIMED_BRAND | impersonation | medium | heuristic | LLM extracted a claimed brand from page text that is **not** in brands.json and the domain doesn't obviously belong to it (PhishLLM-style). If the brand IS in brands.json, the deterministic PAGE.* checks decide instead. |
 
@@ -114,7 +119,7 @@ Confidence:
 | TLS.DISTRUSTED_CA | tls_trust | critical | authoritative | Any presented cert's cert SHA-256 **or SPKI SHA-256** matches `distrusted_cas.json` entries (the 8 eMudhra G3B/G3C intermediates, including Sectigo cross-signed copies of the same keys) |
 | TLS.REMOVED_ROOT | tls_trust | high | authoritative | Chain terminates at a root in `removed_roots` (emSign ECC Root CA - G3), without a compromised intermediate |
 | TLS.REVOKED | tls_trust | critical | authoritative | OCSP/CRL says revoked |
-| TLS.UNTRUSTED_ROOT | tls_trust | high | technical | Chain doesn't validate to the Mozilla root store (certifi) |
+| TLS.UNTRUSTED_ROOT | tls_trust | high | technical | Chain doesn't validate to the Mozilla root store (certifi). Not raised when the server omits the leaf's issuer: that is TLS.INCOMPLETE_CHAIN |
 | TLS.SELF_SIGNED | tls_trust | high | technical | Leaf is self-signed |
 | TLS.EXPIRED | tls_config | high | technical | notAfter < now |
 | TLS.NOT_YET_VALID | tls_config | high | technical | notBefore > now |
@@ -160,7 +165,10 @@ Implementation (`correlation/checks.py`), deliberately conservative so a legitim
 only prior reports at `suspicious` or worse count; allowlisted domains and shorteners never correlate; IP, ASN,
 nameserver and certificate matches only ever yield CORR.SHARED_INFRA; `VALIDATED_MATCH` needs a specific indicator
 (domain, email, phone, UPI ID, crypto address) and a registry row whose status is `validated` as last seen by this
-server. Evidence lists matching report IDs and never the matching email, phone, UPI or crypto value.
+server. A prior report's `domain` indicator counts only if it is the host of one of that report's `url` indicators
+(something submitted), never a host its redirect chain merely passed through: otherwise a validated phishing URL that
+redirects to a victim's homepage would make the victim `confirmed_malicious`. Evidence lists matching report IDs and
+never the matching email, phone, UPI or crypto value.
 
 `PAGE.LLM_CLAIMED_BRAND` (`checks/page_llm.py`, group `page.llm`, weight 0) fires only when the model extracted a
 brand that is not in brands.json, the page asks for credentials or payment, the host is not allowlisted and no

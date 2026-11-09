@@ -76,3 +76,38 @@ summary::-webkit-details-marker {
     animation: none;
   }
 }
+
+/* Landing page (app/page.tsx): hover/active/focus states the inline styles can't express. */
+.landing-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 13px 22px;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: #d6f28c;
+  color: #11160b;
+  box-shadow: 0 0 22px rgba(214, 242, 140, 0.4);
+}
+.landing-cta:hover {
+  background: #eaffb0;
+}
+.landing-cta:active {
+  background: #a9c95e;
+}
+.landing-link {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #c9e77a;
+}
+.landing-link:hover {
+  color: #eaffb0;
+}
+.landing :focus-visible {
+  outline-color: #eaffb0;
+}

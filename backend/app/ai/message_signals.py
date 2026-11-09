@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable
+from app.ai.llm import INJECTION_RULES, LlmClient, LlmUnavailable, untrusted
 from app.checks.base import evidence, make_finding
 from app.schemas import Finding, utcnow
 
@@ -37,7 +37,7 @@ class SignalsOut(BaseModel):
 async def llm_signals(llm: LlmClient, redacted: str) -> list[Finding]:
     """Raises LlmUnavailable on any LLM or validation failure. Unknown check_ids are dropped; strength is forced
     to heuristic by the catalogue (make_finding never takes strength from the caller)."""
-    raw = await llm.call_tool(system=SYSTEM, user=f"<untrusted_input>\n{redacted[:6000]}\n</untrusted_input>",
+    raw = await llm.call_tool(system=SYSTEM, user=untrusted(redacted[:6000]),
                               tool_name="report_signals", schema=SignalsOut.model_json_schema())
     try:
         out = SignalsOut.model_validate(raw)

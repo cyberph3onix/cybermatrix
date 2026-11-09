@@ -28,6 +28,7 @@ EXPECTED = "0xe8db935c3a232b5389c14869c1d0ace58d0f38c6231d1ecff0fecdceb2ad91d3"
 # anvil dev accounts: 0 = deployer/owner/validator, 1 = relayer (submit only)
 DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 RELAYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+OUTSIDER_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"  # anvil account 2
 DISPUTER_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"  # anvil account 2
 
 
@@ -79,6 +80,8 @@ def node():
     reg = w3.eth.contract(address=address, abi=artifact["abi"])
     send(reg.functions.addValidator(deployer.address).build_transaction({"from": deployer.address}))
     send(reg.functions.setDisputeBond(10**15).build_transaction({"from": deployer.address}))
+    send(reg.functions.addReporter(w3.eth.account.from_key(RELAYER_KEY).address).build_transaction(
+        {"from": deployer.address}))
     disputer = w3.eth.account.from_key(DISPUTER_KEY)
 
     def dispute_from_wallet(calldata: str, value: int) -> dict:
@@ -209,3 +212,12 @@ async def test_bonded_dispute_from_user_wallet(client: ChainClient, node) -> Non
     assert node["dispute"](calldata, 10**15)["status"] == 1
     assert await client.get_dispute(rec.onchain_id) == (node["disputer"], 10**15)
     assert (await client.get_report(rec.onchain_id)).status == RegistryStatus.DISPUTED
+
+
+@pytest.mark.asyncio
+async def test_relayer_without_reporter_role_cannot_submit(node) -> None:
+    """Only addresses the owner authorised may submit; anyone else gets the contract's NotReporter error."""
+    async with ChainClient(node["rpc"], node["address"], OUTSIDER_KEY, receipt_timeout_s=30) as c:
+        with pytest.raises(ChainError) as e:
+            await c.submit_report(_report(score=7))
+        assert e.value.reason == "NotReporter"

@@ -85,6 +85,13 @@ def _decode_revert(e: Exception) -> ChainError:
     return ChainError("Reverted", str(e))
 
 
+def reporter_trusted(chain: Any, reporter: str | None) -> bool:
+    """True if `reporter` is this server's relayer. submitReport is open to every address, so a hash on-chain only
+    means a CyberMatrix report when our relayer put it there. Without a configured relayer we cannot tell."""
+    ours = getattr(chain, "relayer_address", None)
+    return ours is None or (reporter or "").lower() == ours.lower()
+
+
 def _hex32(value: str | bytes) -> bytes:
     raw = bytes.fromhex(value.removeprefix("0x")) if isinstance(value, str) else value
     if len(raw) != 32:
@@ -204,6 +211,10 @@ class ChainClient:
 
         existing = await self.find_by_hash(h)
         if existing is not None:
+            if not reporter_trusted(self, existing.reporter):
+                # Someone copied our pending tx's hash from the mempool and registered it first. They now own the
+                # record and could supersede it; never present it as ours.
+                raise ChainError("HashClaimedByAnotherReporter", existing.reporter)
             return record.model_copy(
                 update={"onchain_id": existing.id, "reporter_address": existing.reporter, "status": existing.status}
             )
@@ -244,7 +255,7 @@ class ChainClient:
             report_id=report.report_id,
             computed_hash=computed,
             onchain_hash=onchain.report_hash if onchain else None,
-            match=onchain is not None and onchain.report_hash == computed,
+            match=onchain is not None and onchain.report_hash == computed and reporter_trusted(self, onchain.reporter),
             onchain_status=onchain.status if onchain else None,
             onchain_created_at=onchain.created_at if onchain else None,
             tx_hash=tx_hash,

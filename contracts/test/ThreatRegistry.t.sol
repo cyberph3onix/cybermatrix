@@ -11,6 +11,7 @@ contract ThreatRegistryTest is Test {
     address validator = makeAddr("validator");
     address relayer = makeAddr("relayer");
     address stranger = makeAddr("stranger");
+    address otherReporter = makeAddr("otherReporter");
 
     bytes32 constant H1 = keccak256("report-1");
     bytes32 constant H2 = keccak256("report-2");
@@ -24,11 +25,19 @@ contract ThreatRegistryTest is Test {
     event StatusChanged(uint256 indexed id, ThreatRegistry.Status from, ThreatRegistry.Status to, address indexed by);
     event ValidatorAdded(address indexed account);
     event ValidatorRemoved(address indexed account);
+    event ReporterAdded(address indexed account);
+    event ReporterRemoved(address indexed account);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     function setUp() public {
         reg = new ThreatRegistry();
         reg.addValidator(validator);
+        reg.addReporter(relayer);
+        reg.addReporter(otherReporter);
+    }
+
+    function _allowReporter(address a) internal {
+        if (a != address(0) && !reg.isReporter(a)) reg.addReporter(a);
     }
 
     function _submit(bytes32 h) internal returns (uint256) {
@@ -49,6 +58,7 @@ contract ThreatRegistryTest is Test {
         assertEq(r.owner(), address(this));
         assertEq(r.reportCount(), 0);
         assertFalse(r.isValidator(address(this)));
+        assertFalse(r.isReporter(address(this)));
     }
 
     // ---------- submitReport ----------
@@ -120,30 +130,33 @@ contract ThreatRegistryTest is Test {
 
     function test_RevertWhen_Submit_ZeroHash() public {
         vm.expectRevert(ThreatRegistry.ZeroHash.selector);
+        vm.prank(relayer);
         reg.submitReport(bytes32(0), bytes32(0));
     }
 
     function test_RevertWhen_Submit_Duplicate() public {
         _submit(H1);
         vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.DuplicateHash.selector, H1));
-        vm.prank(stranger);
+        vm.prank(otherReporter);
         reg.submitReport(H1, bytes32(0));
     }
 
     function test_RevertWhen_Submit_SelfParentUnregistered() public {
         vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.ParentNotFound.selector, H1));
+        vm.prank(relayer);
         reg.submitReport(H1, H1);
     }
 
     function test_RevertWhen_Submit_ParentNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.ParentNotFound.selector, H1));
+        vm.prank(relayer);
         reg.submitReport(H2, H1);
     }
 
     function test_RevertWhen_Submit_NotParentOwner() public {
         uint256 p = _submit(H1);
         vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.NotParentOwner.selector, p));
-        vm.prank(stranger);
+        vm.prank(otherReporter);
         reg.submitReport(H2, H1);
     }
 
@@ -354,6 +367,84 @@ contract ThreatRegistryTest is Test {
         reg.setStatus(id, ThreatRegistry.Status.Validated);
     }
 
+    /// Open submission let anyone register the hash of a report.json they wrote (forged MATCH), or copy our pending
+    /// hash from the mempool and register it first (front-running). Only authorised reporters may submit.
+    function test_RevertWhen_Submit_NotReporter() public {
+        vm.expectRevert(ThreatRegistry.NotReporter.selector);
+        vm.prank(stranger);
+        reg.submitReport(H1, bytes32(0));
+
+        vm.expectRevert(ThreatRegistry.NotReporter.selector);
+        reg.submitReport(H1, bytes32(0)); // the owner is not automatically a reporter
+
+        vm.expectRevert(ThreatRegistry.NotReporter.selector);
+        vm.prank(validator);
+        reg.submitReport(H1, bytes32(0));
+        assertEq(reg.idOfHash(H1), 0);
+    }
+
+    function test_FrontRunner_CannotClaimPendingHash() public {
+        vm.prank(stranger); // copies H1 from the relayer's pending tx and tries to land first
+        vm.expectRevert(ThreatRegistry.NotReporter.selector);
+        reg.submitReport(H1, bytes32(0));
+        assertEq(_submit(H1), 1);
+        assertEq(reg.getReport(1).reporter, relayer);
+    }
+
+    // ---------- reporters ----------
+
+    function test_AddReporter() public {
+        vm.expectEmit(true, false, false, false);
+        emit ReporterAdded(stranger);
+        reg.addReporter(stranger);
+        assertTrue(reg.isReporter(stranger));
+        vm.prank(stranger);
+        assertEq(reg.submitReport(H1, bytes32(0)), 1);
+    }
+
+    function test_RemoveReporter_KeepsExistingReports() public {
+        uint256 id = _submit(H1);
+        vm.expectEmit(true, false, false, false);
+        emit ReporterRemoved(relayer);
+        reg.removeReporter(relayer);
+        assertFalse(reg.isReporter(relayer));
+
+        vm.expectRevert(ThreatRegistry.NotReporter.selector);
+        vm.prank(relayer);
+        reg.submitReport(H2, bytes32(0));
+
+        ThreatRegistry.Report memory r = reg.getReport(id);
+        assertEq(r.reporter, relayer);
+        assertEq(uint8(r.status), uint8(ThreatRegistry.Status.Submitted));
+    }
+
+    function test_RevertWhen_AddReporter_NotOwner() public {
+        vm.expectRevert(ThreatRegistry.NotOwner.selector);
+        vm.prank(relayer); // a reporter cannot add more reporters
+        reg.addReporter(stranger);
+    }
+
+    function test_RevertWhen_AddReporter_ZeroAddress() public {
+        vm.expectRevert(ThreatRegistry.ZeroAddress.selector);
+        reg.addReporter(address(0));
+    }
+
+    function test_RevertWhen_AddReporter_Already() public {
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.AlreadyReporter.selector, relayer));
+        reg.addReporter(relayer);
+    }
+
+    function test_RevertWhen_RemoveReporter_NotOwner() public {
+        vm.expectRevert(ThreatRegistry.NotOwner.selector);
+        vm.prank(stranger);
+        reg.removeReporter(relayer);
+    }
+
+    function test_RevertWhen_RemoveReporter_NotAReporter() public {
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.NotAReporter.selector, stranger));
+        reg.removeReporter(stranger);
+    }
+
     // ---------- getReport / idOfHash ----------
 
     function test_RevertWhen_GetReport_IdZero() public {
@@ -448,7 +539,8 @@ contract ThreatRegistryTest is Test {
     // ---------- fuzz ----------
 
     function testFuzz_SubmitGetReportRoundTrip(bytes32 h, address reporter, uint64 ts) public {
-        vm.assume(h != bytes32(0));
+        vm.assume(h != bytes32(0) && reporter != address(0));
+        _allowReporter(reporter);
         vm.warp(ts);
         vm.prank(reporter);
         uint256 id = reg.submitReport(h, bytes32(0));
@@ -463,7 +555,8 @@ contract ThreatRegistryTest is Test {
     }
 
     function testFuzz_SubmitWithParentRoundTrip(bytes32 parent, bytes32 child, address reporter, uint64 ts) public {
-        vm.assume(parent != bytes32(0) && child != bytes32(0) && parent != child);
+        vm.assume(parent != bytes32(0) && child != bytes32(0) && parent != child && reporter != address(0));
+        _allowReporter(reporter);
         vm.startPrank(reporter);
         uint256 p = reg.submitReport(parent, bytes32(0));
         vm.warp(ts);
@@ -479,7 +572,9 @@ contract ThreatRegistryTest is Test {
     }
 
     function testFuzz_DuplicateAlwaysReverts(bytes32 h, address a, address b) public {
-        vm.assume(h != bytes32(0));
+        vm.assume(h != bytes32(0) && a != address(0) && b != address(0));
+        _allowReporter(a);
+        _allowReporter(b);
         vm.prank(a);
         reg.submitReport(h, bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.DuplicateHash.selector, h));

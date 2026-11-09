@@ -127,7 +127,11 @@ def _brand_in_subdomain(u: ParsedURL, idx: BrandIndex, sub: str, reg: str, url: 
         return None
     sub_l = sub.lower()
     path_l = unquote(u.path).lower()
+    # The brand's own top-10k site under its own label (outlook.office365.com) isn't using someone else's name.
+    own_label = split_domain(u.host)[1].lower() if idx.allowlisted(u.host, u.path or "/") else None
     for b in idx.brands:
+        if own_label in b.labels:
+            continue
         for d in b.official_domains:
             if sub_l and re.search(r"(?:^|\.)" + re.escape(d) + r"(?:\.|$)", sub_l):
                 return _bis(b.name, d, "subdomain", reg, url)
