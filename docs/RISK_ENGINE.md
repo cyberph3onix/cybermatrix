@@ -82,7 +82,7 @@ Confidence:
 
 | check_id | Category | Severity | Strength | Fires when |
 |---|---|---|---|---|
-| URL.INTEL.GSB | threat_intel | critical | authoritative | Google Safe Browsing v5 `urls.search` match |
+| URL.INTEL.GSB | threat_intel | critical | authoritative | Google Safe Browsing v5 match (`hashes.search` full-hash match by default; `urls.search` with `GSB_MODE=urls`) |
 | URL.INTEL.URLHAUS | threat_intel | critical | authoritative | URLhaus URL or host match (online or recent) |
 | URL.INTEL.OPENPHISH | threat_intel | critical | authoritative | Exact URL or host in OpenPhish feed |
 | URL.INTEL.VT_MAJORITY | threat_intel | critical | authoritative | VirusTotal ≥ 5 malicious engines |

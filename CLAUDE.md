@@ -136,7 +136,7 @@ no on-chain role. After changing the contract, run `contracts/script/export_abi.
 - TLS: `sslyze` (certificate_info scan only) for chain validation against multiple root stores; `cryptography`
   for field parsing. Our distrust list runs on top, because bundled trust stores lag incident response.
 - CT: Cert Spotter `GET api.certspotter.com/v1/issuances` first; crt.sh is the fallback only (rate-limited, flaky).
-- Threat intel: Google Safe Browsing **v5** `urls.search`, URLhaus, the OpenPhish feed, VirusTotal. Not PhishTank
+- Threat intel: Google Safe Browsing **v5** `hashes.search` (hash prefixes only; `GSB_MODE=urls` for `urls.search`), URLhaus, the OpenPhish feed, VirusTotal. Not PhishTank
   (registration closed).
 - Never use the recovered eMudhra private keys to sign anything. That would be reproducing a real-world
   vulnerability, which the brief forbids. Demos use fixture chains containing the real public intermediate certs.
