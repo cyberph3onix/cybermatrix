@@ -49,6 +49,17 @@ SIGNALS: dict[str, tuple[re.Pattern[str], str, str]] = {
     "MSG.REWARD_LURE": (
         re.compile(r"\b(?:you(?:'ve| have)? (?:won|been selected)|(?:ur|your) (?:no|number|sim(?: card)?) (?:is chosen|won)|selected for|lucky (?:draw|winner)|lottery|prize|cash ?back|refund|reward points|free gift|work from home|registration fee|processing fee|claim (?:now|your|at)|guarantee[ds]? (?:daily )?(?:profit|returns?)|\d+x return|pre-approved (?:personal )?loan|loan (?:application )?approved|claim (?:of rs\.? ?[\d,]+ )?(?:is )?approved|earn rs\.? ?[\d,]+\s*(?:/|per |a )?(?:day|daily)|earn rs\.? ?[\d,]+ daily|daily rs\.? ?[\d,]+ kama\w*|ghar baithe|guarantee[ds]?\b[^.\n]{0,25}\b(?:profit|returns?)|\d{2,}% (?:daily )?returns?|jeet (?:chuke|gaye))\b", re.I),
         "Message offers a prize, refund or job", "Unexpected rewards, especially with a fee, are a common lure."),
+    # Fake tech support / "customer care" scams: get the victim to install a screen-sharing or remote-control app
+    "MSG.REMOTE_ACCESS_REQUEST": (
+        re.compile(r"\b(?:install|download|open|use|share)\b[^.\n]{0,40}\b(?:any ?desk|team ?viewer|quick ?support|rust ?desk|ultra ?viewer|airdroid|supremo|ammyy|screen ?share|screen ?sharing)\b"
+                   r"|\b(?:any ?desk|team ?viewer|quick ?support|rust ?desk|ultra ?viewer|airdroid|supremo|ammyy)\b[^.\n]{0,40}\b(?:install|download|code|id|share|bhejein|batayein)\b"
+                   r"|\bshare (?:your )?screen\b|\b(?:install|download) (?:this|the attached|the following|attached) (?:app|apk|application)\b|\b[\w-]+\.apk\b", re.I),
+        "Message asks you to install a remote-access app", "No bank or support team needs remote control of your phone or computer."),
+    # Investment / crypto lures: promised returns
+    "MSG.INVESTMENT_LURE": (
+        re.compile(r"\bguarantee[ds]?\b[^.\n]{0,25}\b(?:profit|returns?|income)\b|\b\d{1,3} ?% (?:daily|weekly|monthly|per day|per week|per month|a day|a week|a month) (?:returns?|profit|interest)?|\b\d{1,3} ?% (?:returns?|profit) (?:daily|weekly|monthly|per day|per week|per month|in \d+ days?)\b"
+                   r"|\bdouble (?:your|ur) (?:money|investment|crypto|btc|usdt)\b|\b\d+x (?:returns?|profit)\b|\b(?:crypto|bitcoin|btc|usdt|forex|trading) (?:signals?|tips|investment plan|mining plan)\b|\brisk[- ]free (?:investment|returns?|profit|trading)\b", re.I),
+        "Message promises investment returns", "Guaranteed or very high returns are the signature of investment fraud."),
 }
 
 
@@ -189,7 +200,8 @@ def scam_pattern(found: list[Finding], ex: Extracted, text: str = "") -> Finding
         tactics.append("too-good-to-be-true offer")
     actions = ([f"{len(ex.urls)} link(s)"] if ex.urls else []) + ([f"{len(ex.phones)} phone number(s)"] if ex.phones else []) \
         + ([f"{len(ex.upi_ids)} UPI ID(s)"] if ex.upi_ids else []) + ([f"{len(ex.emails)} email address(es)"] if ex.emails else []) \
-        + [c for c in ("MSG.CREDENTIAL_REQUEST", "MSG.PAYMENT_REQUEST") if c in ids] + (["a reply/call-now instruction"] if act else [])
+        + [c for c in ("MSG.CREDENTIAL_REQUEST", "MSG.PAYMENT_REQUEST", "MSG.REMOTE_ACCESS_REQUEST") if c in ids] \
+        + (["a reply/call-now instruction"] if act else [])
     if len(tactics) < 2 or not actions:
         return None
     return make_finding("MSG.SCAM_PATTERN", "Message combines pressure tactics with a way to act on them",

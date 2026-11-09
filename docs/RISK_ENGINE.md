@@ -142,7 +142,9 @@ Confidence:
 | MSG.URGENCY | social_engineering | low | heuristic | Deadline, threat of block/suspension |
 | MSG.AUTHORITY_IMPERSONATION | social_engineering | low | heuristic | Claims to be a bank/gov/university/company, or police/court/RBI/cyber cell |
 | MSG.REWARD_LURE | social_engineering | low | heuristic | Prize, cashback, refund, job offer with fee |
-| MSG.SCAM_PATTERN | social_engineering | medium | heuristic | Two different pressure tactics (urgency, authority, reward; a prize/guaranteed-return offer counts as two) **and** a way to act on them (link, phone, UPI ID, email, payment/credential request, "reply YES") |
+| MSG.REMOTE_ACCESS_REQUEST | social_engineering | medium | heuristic | Asks to install/open a remote-access or screen-sharing app (AnyDesk, TeamViewer, QuickSupport, RustDesk…), share the screen, or install "this app"/an `.apk` (regex + LLM) |
+| MSG.INVESTMENT_LURE | social_engineering | low | heuristic | Promises investment returns: guaranteed profit, "N% daily/monthly", "double your money", crypto/forex "signals" or "investment plan", "risk-free" returns |
+| MSG.SCAM_PATTERN | social_engineering | medium | heuristic | Two different pressure tactics (urgency, authority, reward; a prize/guaranteed-return offer counts as two) **and** a way to act on them (link, phone, UPI ID, email, payment/credential/remote-access request, "reply YES") |
 | MSG.SENDER_DOMAIN_MISMATCH | impersonation | high | technical | Email From/Reply-To domain doesn't match the claimed organisation's official domain (headers present) |
 | MSG.LINK_TEXT_MISMATCH | phishing | high | technical | Displayed link text domain ≠ actual href domain |
 | MSG.DMARC_FAIL | impersonation | high | technical | Pasted headers: the receiving server's top-most `Authentication-Results` says `dmarc=fail` |

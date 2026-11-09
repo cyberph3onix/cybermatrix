@@ -60,6 +60,8 @@ CATALOGUE: dict[str, Meta] = {
     "MSG.AUTHORITY_IMPERSONATION": Meta("social_engineering", "low", "heuristic"),
     "MSG.REWARD_LURE": Meta("social_engineering", "low", "heuristic"),
     "MSG.SCAM_PATTERN": Meta("social_engineering", "medium", "heuristic"),
+    "MSG.REMOTE_ACCESS_REQUEST": Meta("social_engineering", "medium", "heuristic"),
+    "MSG.INVESTMENT_LURE": Meta("social_engineering", "low", "heuristic"),
     "MSG.SENDER_DOMAIN_MISMATCH": Meta("impersonation", "high", "technical"),
     "MSG.LINK_TEXT_MISMATCH": Meta("phishing", "high", "technical"),
     "MSG.DMARC_FAIL": Meta("impersonation", "high", "technical"),

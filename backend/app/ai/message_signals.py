@@ -8,13 +8,15 @@ from app.checks.base import evidence, make_finding
 from app.schemas import Finding, utcnow
 
 ALLOWED = ("MSG.CREDENTIAL_REQUEST", "MSG.PAYMENT_REQUEST", "MSG.URGENCY", "MSG.AUTHORITY_IMPERSONATION",
-           "MSG.REWARD_LURE")
+           "MSG.REWARD_LURE", "MSG.REMOTE_ACCESS_REQUEST", "MSG.INVESTMENT_LURE")
 TITLES = {
     "MSG.CREDENTIAL_REQUEST": ("Message asks for a code, PIN or password", "Legitimate organisations never ask for these in a message."),
     "MSG.PAYMENT_REQUEST": ("Message asks you to pay or approve a payment", "Scammers use payment requests to take money."),
     "MSG.URGENCY": ("Message pressures you with a deadline or threat", "Pressure is used to stop you thinking."),
     "MSG.AUTHORITY_IMPERSONATION": ("Message claims to come from an organisation", "Check the organisation through its official app or website."),
     "MSG.REWARD_LURE": ("Message offers a prize, refund or job", "Unexpected rewards are a common lure."),
+    "MSG.REMOTE_ACCESS_REQUEST": ("Message asks you to install a remote-access app", "No bank or support team needs remote control of your device."),
+    "MSG.INVESTMENT_LURE": ("Message promises investment returns", "Guaranteed or very high returns are the signature of investment fraud."),
 }
 SYSTEM = (
     "You label language signals in a possibly fraudulent message. " + INJECTION_RULES + " "
