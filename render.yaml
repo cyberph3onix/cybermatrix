@@ -57,4 +57,4 @@ services:
       - key: PORT
         value: "3000"
       - key: NEXT_PUBLIC_API_URL      # inlined at build time (Docker build arg)
-        value: https://cybermatrix-api.onrender.com
+        value: https://cybermatrix-api-ik33.onrender.com
