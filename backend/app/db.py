@@ -67,6 +67,34 @@ class DisputeReasonRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class AttestationRow(Base):
+    """EIP-712 signature by a user's wallet over a report hash (reporter provenance, app/registry/attest.py)."""
+
+    __tablename__ = "attestations"
+
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.report_id", ondelete="CASCADE"), primary_key=True)
+    signer: Mapped[str] = mapped_column(String(42), primary_key=True)
+    report_hash: Mapped[str] = mapped_column(String(66))
+    signature: Mapped[str] = mapped_column(String(132))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CampaignRow(Base):
+    """A registered campaign manifest (canonical bytes, served verbatim for verification)."""
+
+    __tablename__ = "campaigns"
+
+    campaign_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    cluster_id: Mapped[str] = mapped_column(String(32), index=True)
+    canonical: Mapped[bytes] = mapped_column(LargeBinary)
+    manifest_hash: Mapped[str] = mapped_column(String(66), unique=True)
+    chain_id: Mapped[int] = mapped_column(Integer)
+    contract_address: Mapped[str] = mapped_column(String(42))
+    onchain_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tx_hash: Mapped[str | None] = mapped_column(String(66), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class OwnershipRow(Base):
     """An ownership challenge and, once proven, its grant (see app/ownership.py)."""
 

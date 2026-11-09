@@ -59,6 +59,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Campaign */
+        get: operations["get_campaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clusters": {
         parameters: {
             query?: never;
@@ -70,6 +87,27 @@ export interface paths {
         get: operations["clusters"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clusters/{cluster_id}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Campaign
+         * @description Freeze a cluster as a campaign manifest (member report hashes + shared indicators + edges) and commit its
+         *     hash on-chain. Registering the same cluster again returns the earlier record.
+         */
+        post: operations["register_campaign"];
         delete?: never;
         options?: never;
         head?: never;
@@ -252,6 +290,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/{report_id}/attestations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attestations
+         * @description The typed data a user's wallet signs, and the signatures stored so far.
+         */
+        get: operations["get_attestations"];
+        put?: never;
+        /** Add Attestation */
+        post: operations["add_attestation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/certificate-verdict": {
         parameters: {
             query?: never;
@@ -284,6 +343,23 @@ export interface paths {
          *     The server never sends the dispute itself: the bond must come from the person disputing.
          */
         post: operations["dispute_reason"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{report_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Evidence Manifest */
+        get: operations["get_evidence_manifest"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -486,6 +562,11 @@ export interface components {
         };
         /** AssessRequest */
         AssessRequest: {
+            /**
+             * Incident Summary
+             * @description Optional: what happened, in your words. Personal details are masked
+             */
+            incident_summary?: string | null;
             /** Input */
             input: string;
             /**
@@ -528,6 +609,11 @@ export interface components {
             created_at: string;
             /** Findings */
             findings: components["schemas"]["Finding"][];
+            /**
+             * Incident Summary
+             * @description What happened, in the submitter's own words (personal details masked). OFF-CHAIN ONLY. Left out of the canonical bytes when empty, so reports made before this field existed hash exactly as before.
+             */
+            incident_summary: string | null;
             /** Indicators */
             indicators: components["schemas"]["Indicator"][];
             /**
@@ -569,6 +655,48 @@ export interface components {
             subject: string;
             subject_type: components["schemas"]["SubjectType"];
         };
+        /** Attestation */
+        Attestation: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Report Hash */
+            report_hash: string;
+            /** Signature */
+            signature: string;
+            /** Signer */
+            signer: string;
+        };
+        /** AttestationRequest */
+        AttestationRequest: {
+            /** Signature */
+            signature: string;
+            /** Signer */
+            signer: string;
+        };
+        /** Attestations */
+        Attestations: {
+            /** Attestations */
+            attestations: components["schemas"]["Attestation"][];
+            /**
+             * Note
+             * @default A signature shows which wallet vouched for this exact report. It is stored by this server, not on-chain, and an address is not a verified identity.
+             */
+            note: string;
+            /** Report Hash */
+            report_hash: string;
+            /** Report Id */
+            report_id: string;
+            /**
+             * Typed Data
+             * @description EIP-712 typed data to sign with eth_signTypedData_v4
+             */
+            typed_data: {
+                [key: string]: unknown;
+            };
+        };
         /** Body_assess_qr */
         Body_assess_qr: {
             /**
@@ -595,6 +723,57 @@ export interface components {
              * @description Address the page was shown at
              */
             url: string;
+        };
+        /**
+         * CampaignManifest
+         * @description A phishing campaign (a /clusters group) frozen for the registry. Its keccak256(JCS) is committed on-chain
+         *     exactly like a report; verify.py and /verify check it the same way. Member reports are referenced by hash.
+         */
+        CampaignManifest: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Cluster Id */
+            cluster_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Edges */
+            edges: components["schemas"]["ClusterEdge"][];
+            /** Label */
+            label: string;
+            /**
+             * Report Hashes
+             * @description keccak256 of each member report, sorted
+             */
+            report_hashes: string[];
+            /** Salt */
+            salt: string;
+            /**
+             * Schema Version
+             * @default campaign-1.0.0
+             */
+            schema_version: string;
+            /** Shared Indicators */
+            shared_indicators: components["schemas"]["ClusterIndicator"][];
+        };
+        /** CampaignRecord */
+        CampaignRecord: {
+            /** Campaign Id */
+            campaign_id: string;
+            /** Chain Id */
+            chain_id: number;
+            /** Contract Address */
+            contract_address: string;
+            /** Explorer Url */
+            explorer_url: string | null;
+            /** Manifest Hash */
+            manifest_hash: string;
+            /** Onchain Id */
+            onchain_id: number | null;
+            /** Tx Hash */
+            tx_hash: string | null;
         };
         /** CertificateSummary */
         CertificateSummary: {
@@ -873,6 +1052,42 @@ export interface components {
              * Source
              * @description local:tls_inspector | google_safe_browsing | urlhaus | openphish | virustotal | crt.sh | rdap | llm:claude-haiku-5-5 ...
              */
+            source: string;
+        };
+        /** EvidenceManifest */
+        EvidenceManifest: {
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Note
+             * @default Each evidence item can be re-hashed from report.json. Because the report hash covers every item, an item that matches here is also covered by the on-chain commitment.
+             */
+            note: string;
+            /**
+             * Report Hash
+             * @description keccak256 of the canonical report: the fingerprint committed on-chain
+             */
+            report_hash: string;
+            /** Report Id */
+            report_id: string;
+        };
+        /** EvidenceRef */
+        EvidenceRef: {
+            /** Check Id */
+            check_id: string;
+            /**
+             * Index
+             * @description Position of the evidence item within the finding
+             */
+            index: number;
+            /** Kind */
+            kind: string;
+            /**
+             * Sha256
+             * @description SHA-256 of the RFC 8785 canonical JSON of this evidence item
+             */
+            sha256: string;
+            /** Source */
             source: string;
         };
         /**
@@ -1489,6 +1704,44 @@ export interface operations {
             };
         };
     };
+    get_campaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The registered campaign manifest, byte for byte. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignManifest"];
+                };
+            };
+            /** @description Unknown campaign */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     clusters: {
         parameters: {
             query?: never;
@@ -1505,6 +1758,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Cluster"][];
+                };
+            };
+        };
+    };
+    register_campaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cluster_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1827,6 +2111,72 @@ export interface operations {
             };
         };
     };
+    get_attestations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attestations"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_attestation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttestationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attestations"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_certificate_verdict: {
         parameters: {
             query?: never;
@@ -1880,6 +2230,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisputePrepared"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_evidence_manifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceManifest"];
                 };
             };
             /** @description Validation Error */

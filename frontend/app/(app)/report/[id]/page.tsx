@@ -11,6 +11,7 @@ import { ClassBanner } from "@/components/ClassBanner";
 import { FindingGroups } from "@/components/FindingGroups";
 import { InvestigationTrace } from "@/components/InvestigationTrace";
 import { RedirectTimeline } from "@/components/RedirectTimeline";
+import { Provenance } from "@/components/Provenance";
 import { RegisterButton } from "@/components/RegisterButton";
 import { Section } from "@/components/Section";
 
@@ -55,6 +56,13 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       <ClassBanner report={report} />
+
+      {report.incident_summary && (
+        <Section id="summary" title="What the submitter reported">
+          <p className="max-w-prose whitespace-pre-wrap text-sm">{report.incident_summary}</p>
+          <p className="mt-1 text-xs text-muted">In the submitter&apos;s own words, personal details masked. Not checked by us.</p>
+        </Section>
+      )}
 
       {report.recommended_actions.length > 0 && (
         <Section id="actions" title="What to do now">
@@ -124,6 +132,10 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
 
       <Section id="register" title="Community registry">
         <RegisterButton reportId={report.report_id} />
+      </Section>
+
+      <Section id="provenance" title="Fingerprints and provenance">
+        <Provenance reportId={report.report_id} />
       </Section>
 
       <p className="mt-10 break-all font-mono text-xs text-muted">

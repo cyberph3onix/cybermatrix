@@ -55,6 +55,15 @@ class FakeChain:
     async def get_report(self, onchain_id):
         return next(r for r in self.reports.values() if r.id == onchain_id)
 
+    async def submit_hash(self, h, record_id, parent_hash=None):
+        self.submits += 1
+        r = SimpleNamespace(id=len(self.reports) + 1, report_hash=h, reporter="0xRELAYER",
+                            created_at=datetime(2026, 11, 9, tzinfo=UTC), status=RegistryStatus.SUBMITTED)
+        self.reports[h] = r
+        return RegistryRecord(report_id=record_id, report_hash=h, parent_hash=parent_hash or "0x" + "00" * 32,
+                              chain_id=11155111, contract_address=self.address,
+                              onchain_id=r.id, tx_hash="0x" + "cd" * 32, reporter_address=r.reporter)
+
     async def submit_report(self, report, parent_hash=None):
         self.submits += 1
         h = report_hash(report)

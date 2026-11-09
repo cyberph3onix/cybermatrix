@@ -18,6 +18,7 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [shot, setShot] = useState<File | null>(null);
   const [shotConsent, setShotConsent] = useState(false);
+  const [summary, setSummary] = useState("");
 
   const detected = useMemo(() => (qr ? "qr" : detectSubjectType(text)), [qr, text]);
   const secretWarning = useMemo(() => !qr && looksLikeSecret(text), [qr, text]);
@@ -42,6 +43,7 @@ export default function Home() {
             // the exposure probe needs proof of ownership; without a grant the link is assessed normally
             owns_site: owns && grant !== null && showOwns,
             ownership_token: owns && showOwns ? grant?.ownership_token : undefined,
+            incident_summary: summary.trim() || undefined,
           });
       router.push(`/report/${report_id}`);
     } catch (e) {
@@ -78,6 +80,20 @@ export default function Home() {
           autoComplete="off"
           spellCheck={false}
         />
+
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted">Add what happened (optional, saved in the report)</summary>
+          <textarea
+            aria-label="What happened, in your words"
+            rows={2}
+            maxLength={1000}
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="e.g. Got this by SMS this morning; the page asked for my card number."
+            className="mt-1 block w-full rounded-md border border-rule bg-panel p-2 text-base"
+          />
+          <span className="text-xs text-muted">Phone numbers, emails and account numbers are masked. Don&apos;t include passwords or codes.</span>
+        </details>
 
         {secretWarning && (
           <p role="alert" className="rounded-md border border-c-susp bg-c-susp-tint p-3 text-sm text-c-susp-ink">

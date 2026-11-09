@@ -69,6 +69,26 @@ cases) and `contracts/test/ThreatRegistry.t.sol` (reporter-role cases). Each fai
 | Hash mismatch backend ↔ verify.py | None found. Lone surrogates are rejected at the boundary (422), floats and big ints aren't in the schema, and stored bytes are served verbatim |
 | IPv6 / alternate encodings / redirect tricks | Nothing new got through. The first review's 36 cases still pass |
 
+## Decentralised threat intelligence: what the chain does and does not prove
+
+- **On-chain:** `reportHash` (keccak256 of the canonical report), `parentHash` (the revision it replaces), the reporter
+  address, `createdAt` and the status, plus a dispute's `reasonHash` and bond. Decoded calldata of a real transaction
+  is in `docs/evidence/onchain.md`; it holds only hashes, an id and a status. The 32-byte random `salt` in every
+  report stops anyone from confirming a guessed URL against the hash (`tests/test_audit_security.py`).
+- **Off-chain (Postgres):** the report itself, the user's incident summary, dispute reason text, signatures.
+- **What a MATCH proves:** the report is byte-for-byte what was registered, when, by which reporter, and its revision
+  and dispute history. **It does not prove the report is true.** The verify page, `verify.py` and the registry panel
+  all say so.
+- **Validator authority is ours.** `Validated` / `Rejected` are set by validator addresses the contract owner
+  appointed; today that is one key we hold (`DEPLOYER_PRIVATE_KEY`). `CORR.VALIDATED_MATCH` is authoritative only in
+  the sense that our own validator reviewed the earlier report; it is not an outside authority. Validators can act
+  from the report page ("Validator review", their own wallet) or with `script/SetStatus.s.sol`.
+- **What a user can submit:** indicators (from the assessment), an incident summary in their own words (inside the
+  committed report; left out of the canonical bytes when empty so older hashes are unchanged), the report fingerprint
+  and per-evidence SHA-256 references (`GET /reports/{id}/evidence`), a campaign (`POST /clusters/{id}/register`
+  commits a manifest of member report hashes, shared indicators and edges; `GET /campaigns/{id}` serves it, and
+  verify.py / `/verify` check it like a report), and an EIP-712 signature as the reporter.
+
 ## Known limitations
 
 1. **Ownership is proven (fixed).** The `/.git/HEAD` and `/.env` probe needs a grant from `POST /ownership/verify`,
@@ -85,8 +105,13 @@ cases) and `contracts/test/ThreatRegistry.t.sol` (reporter-role cases). Each fai
 3. **Registry status lag is bounded (fixed).** A background job (`app/registry/sync.py`, every `REGISTRY_SYNC_S`,
    default 10 min) re-reads every non-terminal registration, so `CORR.VALIDATED_MATCH` lags the chain by at most one
    interval. Rows from the v1 contract keep their last status: their on-chain ids mean something else on v2.
-4. **Single relayer, single owner.** All reports register from one address, so the on-chain reporter does not identify
-   a user, and the contract owner, validators and reporters are fully trusted. Since v3 the registry is permissioned:
+4. **Single relayer, single owner (provenance partly fixed).** All reports register from one address, so the on-chain
+   reporter does not identify a user, and the contract owner, validators and reporters are fully trusted. A user can
+   now sign the report hash with their own wallet (EIP-712 `ReportAttestation`, `app/registry/attest.py`); we verify
+   the signature, store it and show the signer on the report. We chose this over letting users call `submitReport`
+   directly because it costs the user no gas and keeps the registry permissioned (the forged-report fix above). The
+   trade-off: the signature is off-chain, so it proves which address vouched, not that the chain recorded it, and an
+   address is not a verified identity. Since v3 the registry is permissioned:
    only reporters the owner added can submit. That is what makes a MATCH mean "CyberMatrix registered this", but
    nobody else can publish to it.
 5. **Rate limits are in-process (accepted).** They assume one backend instance; a shared store such as Redis is the fix

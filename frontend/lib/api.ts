@@ -6,7 +6,10 @@ import type {
   AssessRequest,
   AssessResponse,
   AssessmentReport,
+  Attestations,
+  CampaignRecord,
   CertificateVerdict,
+  EvidenceManifest,
   Cluster,
   DisputePrepared,
   ImpersonationTrend,
@@ -101,6 +104,28 @@ export async function getReport(id: string): Promise<AssessmentReport> {
 /** Module 2 certificate verdict, recomputed from the report's TLS findings (not part of the hashed report). */
 export async function getCertificateVerdict(id: string): Promise<CertificateVerdict> {
   return request(`/reports/${encodeURIComponent(id)}/certificate-verdict`);
+}
+
+export async function getEvidenceManifest(id: string): Promise<EvidenceManifest> {
+  return request(`/reports/${encodeURIComponent(id)}/evidence`);
+}
+
+export async function getAttestations(id: string): Promise<Attestations> {
+  return request(`/reports/${encodeURIComponent(id)}/attestations`);
+}
+
+export async function addAttestation(id: string, signer: string, signature: string): Promise<Attestations> {
+  return request(`/reports/${encodeURIComponent(id)}/attestations`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ signer, signature }),
+  });
+}
+
+export const campaignUrl = (id: string) => `${BASE}/campaigns/${encodeURIComponent(id)}`;
+
+export async function registerCampaign(clusterId: string): Promise<CampaignRecord> {
+  return request(`/clusters/${encodeURIComponent(clusterId)}/register`, json("POST"), 200_000);
 }
 
 /** The stored registry record, or null if this report has not been registered. */

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import re
 import time
@@ -25,7 +26,16 @@ from app.api.state import AppState
 from app.brands import get_index
 from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters, impersonation_trends, techniques_of
-from app.db import DisputeReasonRow, OrgRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
+from app.db import (
+    AttestationRow,
+    CampaignRow,
+    DisputeReasonRow,
+    OrgRow,
+    OwnershipRow,
+    RegistryRow,
+    WatchAlertRow,
+    WatchRow,
+)
 from app.detect import detect_subject
 from app.engine.cert_verdict import certificate_verdict
 from app.pipeline import assess_url
@@ -34,18 +44,26 @@ from app.pipeline_upi import UpiError, assess_upi, is_upi
 from app.pipeline_upi import finalize as finalize_upi
 from app.qr import QrError, decode_qr
 from app.ratelimit import client_ip, limit_dependency
+from app.registry import attest
 from app.registry.chain import ZERO_HASH, ChainClient, ChainError, ChainUnavailable, reporter_trusted
 from app.registry.sync import on_contract
 from app.schemas import (
     AssessmentReport,
     AssessRequest,
     AssessResponse,
+    Attestation,
+    AttestationRequest,
+    Attestations,
+    CampaignManifest,
+    CampaignRecord,
     CertificateVerdict,
     CheckStatus,
     Cluster,
     DisputeInfo,
     DisputePrepared,
     DisputeReasonRequest,
+    EvidenceManifest,
+    EvidenceRef,
     ImpersonationTrend,
     OrgDashboard,
     OrgRequest,
@@ -140,8 +158,14 @@ async def _explain(st: AppState, report: AssessmentReport, untrusted: str | None
     return report.model_copy(update={"ai": ai, "limitations": [x for x in report.limitations if "AI explanation not" not in x]})
 
 
+def _with_summary(report: AssessmentReport, summary: str | None) -> AssessmentReport:
+    """Attach the submitter's own description (M6-1), redacted like any message. Never sent to the LLM."""
+    text = redact(summary.strip()).text[:1000] if summary and summary.strip() else None
+    return report.model_copy(update={"incident_summary": text}) if text else report
+
+
 async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, qr: bool = False,
-                            owns_site: bool = False, post=None) -> AssessResponse:
+                            owns_site: bool = False, post=None, summary: str | None = None) -> AssessResponse:
     """`post` (optional) transforms the report after the checks and before correlation, explanation and storage."""
     try:
         parsed = parse_url(url_input)
@@ -156,6 +180,7 @@ async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, q
     report = await _explain(st, await apply_correlation(db, report))
     if qr:
         report = report.model_copy(update={"subject_type": SubjectType.QR.value})
+    report = _with_summary(report, summary)
     await store.save_report(db, report)
     return AssessResponse(report_id=report.report_id)
 
@@ -170,7 +195,7 @@ async def assess(req: AssessRequest, request: Request, st: St, db: Db) -> Assess
     if kind in (SubjectType.URL, SubjectType.DOMAIN):
         if len(text) > MAX_URL_CHARS:
             raise HTTPException(422, f"Links longer than {MAX_URL_CHARS} characters aren't supported.")
-        return await _assess_and_store(st, db, text, owns_site=req.owns_site)
+        return await _assess_and_store(st, db, text, owns_site=req.owns_site, summary=req.incident_summary)
     if kind == SubjectType.EMAIL:
         if not _EMAIL_ONLY.match(text):
             raise HTTPException(422, "That doesn't look like a single email address.")
@@ -184,6 +209,7 @@ async def assess(req: AssessRequest, request: Request, st: St, db: Db) -> Assess
         report = await _explain(st, report, report.subject)  # report.subject is the redacted text
     else:
         raise HTTPException(422, "Submit a link, domain, email address or message text.")
+    report = _with_summary(report, req.incident_summary)
     await store.save_report(db, report)
     return AssessResponse(report_id=report.report_id)
 
@@ -272,6 +298,16 @@ async def get_report(report_id: str, db: Db) -> Response:
 @router.get("/reports/{report_id}/certificate-verdict", response_model=CertificateVerdict)
 async def get_certificate_verdict(report_id: str, db: Db) -> CertificateVerdict:
     return certificate_verdict(store.parse_report(await _row_or_404(db, report_id)))
+
+
+@router.get("/reports/{report_id}/evidence", response_model=EvidenceManifest)
+async def get_evidence_manifest(report_id: str, db: Db) -> EvidenceManifest:
+    row = await _row_or_404(db, report_id)
+    rep = store.parse_report(row)
+    refs = [EvidenceRef(check_id=f.check_id, index=i, kind=e.kind, source=e.source,
+                        sha256=hashlib.sha256(rfc8785.dumps(e.model_dump(mode="json"))).hexdigest())
+            for f in [*rep.findings, *rep.security_posture] for i, e in enumerate(f.evidence)]
+    return EvidenceManifest(report_id=report_id, report_hash=store.hash_bytes(row.canonical), evidence=refs)
 
 
 @router.get("/reports/{report_id}/registration", response_model=RegistryRecord | None)
@@ -390,6 +426,48 @@ async def history(report_id: str, st: St, db: Db) -> ReportHistory:
         can_dispute=current.status in (RegistryStatus.SUBMITTED, RegistryStatus.VALIDATED))
 
 
+# ---------- reporter provenance (EIP-712, app/registry/attest.py) ----------
+
+MAX_ATTESTATIONS = 20
+
+
+async def _attestations(report_id: str, st: AppState, db: AsyncSession) -> Attestations:
+    row = await _row_or_404(db, report_id)
+    chain = _get_chain(st)
+    h = store.hash_bytes(row.canonical)
+    data = attest.typed_data(h, report_id, await chain.chain_id(), chain.address)
+    rows = (await db.execute(select(AttestationRow).where(AttestationRow.report_id == report_id)
+                             .order_by(AttestationRow.created_at))).scalars().all()
+    return Attestations(report_id=report_id, report_hash=h, typed_data=data,
+                        attestations=[Attestation(signer=a.signer, report_hash=a.report_hash, signature=a.signature,
+                                                  created_at=a.created_at) for a in rows])
+
+
+@router.get("/reports/{report_id}/attestations", response_model=Attestations)
+async def get_attestations(report_id: str, st: St, db: Db) -> Attestations:
+    """The typed data a user's wallet signs, and the signatures stored so far."""
+    return await _attestations(report_id, st, db)
+
+
+@router.post("/reports/{report_id}/attestations", response_model=Attestations,
+             dependencies=[Depends(_limit("register_limiter"))])
+async def add_attestation(report_id: str, req: AttestationRequest, st: St, db: Db) -> Attestations:
+    cur = await _attestations(report_id, st, db)
+    try:
+        signer = attest.recover(cur.typed_data, req.signature)
+    except ValueError:
+        raise HTTPException(422, "The signature could not be verified.") from None
+    if signer.lower() != req.signer.lower():
+        raise HTTPException(422, "The signature was not made by the address given.")
+    if len(cur.attestations) >= MAX_ATTESTATIONS:
+        raise HTTPException(429, "This report has the maximum number of signatures.")
+    if await db.get(AttestationRow, (report_id, signer)) is None:
+        db.add(AttestationRow(report_id=report_id, signer=signer, report_hash=cur.report_hash,
+                              signature=req.signature, created_at=utcnow()))
+        await db.commit()
+    return await _attestations(report_id, st, db)
+
+
 @router.post("/reports/{report_id}/dispute-reason", response_model=DisputePrepared,
              dependencies=[Depends(_limit("register_limiter"))])
 async def dispute_reason(report_id: str, req: DisputeReasonRequest, st: St, db: Db) -> DisputePrepared:
@@ -501,6 +579,61 @@ async def verify_uploaded(request: Request, st: St, db: Db,
 async def clusters(st: St, db: Db) -> list[Cluster]:
     built = build_clusters(await store.indicator_rows(db))
     return await add_summaries(st.llm, built, st.cluster_summaries)
+
+
+# ---------- campaigns (a cluster registered as one record) ----------
+
+_CAMPAIGN_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+
+
+def _campaign_record(row: CampaignRow, explorer: str | None = None) -> CampaignRecord:
+    return CampaignRecord(campaign_id=row.campaign_id, manifest_hash=row.manifest_hash, chain_id=row.chain_id,
+                          contract_address=row.contract_address, onchain_id=row.onchain_id, tx_hash=row.tx_hash,
+                          explorer_url=explorer)
+
+
+@router.post("/clusters/{cluster_id}/register", response_model=CampaignRecord,
+             dependencies=[Depends(_limit("register_limiter"))])
+async def register_campaign(cluster_id: str, st: St, db: Db) -> CampaignRecord:
+    """Freeze a cluster as a campaign manifest (member report hashes + shared indicators + edges) and commit its
+    hash on-chain. Registering the same cluster again returns the earlier record."""
+    from app.db import ReportRow
+    async with st.register_lock:
+        done = (await db.execute(select(CampaignRow).where(CampaignRow.cluster_id == cluster_id)
+                                 .where(CampaignRow.onchain_id.is_not(None)))).scalars().first()
+        if done is not None:
+            return _campaign_record(done)
+        cluster = next((c for c in build_clusters(await store.indicator_rows(db)) if c.cluster_id == cluster_id), None)
+        if cluster is None:
+            raise HTTPException(404, "No cluster with this ID.")
+        _throttle(st.register_global, "all")
+        chain = _get_chain(st)
+        hashes = sorted((await db.execute(select(ReportRow.report_hash)
+                                          .where(ReportRow.report_id.in_(cluster.report_ids)))).scalars().all())
+        manifest = CampaignManifest(cluster_id=cluster.cluster_id, label=cluster.label, report_hashes=hashes,
+                                    shared_indicators=cluster.shared_indicators, edges=cluster.edges)
+        canonical = rfc8785.dumps(manifest.model_dump(mode="json"))
+        h = store.hash_bytes(canonical)
+        try:
+            rec = await chain.submit_hash(h, manifest.campaign_id)
+        except (ChainError, ChainUnavailable) as e:
+            raise _chain_error(e) from None
+        row = CampaignRow(campaign_id=manifest.campaign_id, cluster_id=cluster_id, canonical=canonical, manifest_hash=h,
+                          chain_id=rec.chain_id, contract_address=rec.contract_address, onchain_id=rec.onchain_id,
+                          tx_hash=rec.tx_hash, created_at=manifest.created_at)
+        db.add(row)
+        await db.commit()
+        return _campaign_record(row, await chain.explorer_url(rec.tx_hash) if rec.tx_hash else None)
+
+
+@router.get("/campaigns/{campaign_id}", response_class=Response, responses={
+    200: {"model": CampaignManifest, "description": "The registered campaign manifest, byte for byte."},
+    404: {"description": "Unknown campaign"}})
+async def get_campaign(campaign_id: str, db: Db) -> Response:
+    row = await db.get(CampaignRow, campaign_id) if _CAMPAIGN_ID.match(campaign_id) else None
+    if row is None:
+        raise HTTPException(404, "No campaign with this ID.")
+    return Response(content=row.canonical, media_type="application/json")
 
 
 @router.get("/trends/impersonation", response_model=list[ImpersonationTrend])

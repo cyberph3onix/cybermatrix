@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getHistory, prepareDispute, reassessReport } from "@/lib/api";
 import type { RegistryStatus, ReportHistory } from "@/lib/types";
 import { formatEth, hasWallet, sendDispute } from "@/lib/wallet";
+import { ValidatorPanel } from "./ValidatorPanel";
 
 const STATUS_TEXT: Record<RegistryStatus, string> = {
   submitted: "Submitted: registered, not yet reviewed",
@@ -186,7 +187,18 @@ export function RegistryHistory({ reportId, refreshKey = 0 }: { reportId: string
           {err}
         </p>
       )}
+      {(() => {
+        const cur = h.versions.find((v) => v.is_current);
+        return cur?.onchain_id != null && h.chain_id != null && h.contract_address &&
+          (cur.status === "submitted" || cur.status === "disputed" || cur.status === "validated") ? (
+          <ValidatorPanel chainId={h.chain_id} contract={h.contract_address} onchainId={cur.onchain_id} onSent={load} />
+        ) : null;
+      })()}
       <p className="mt-3 max-w-prose text-xs text-muted">{h.note}</p>
+      <p className="mt-1 max-w-prose text-xs text-muted">
+        The registry proves this report is unchanged since it was registered and records its history. It does not
+        prove the report is true.
+      </p>
     </div>
   );
 }

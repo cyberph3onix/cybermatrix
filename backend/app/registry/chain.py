@@ -199,10 +199,13 @@ class ChainClient:
 
     async def submit_report(self, report: AssessmentReport, parent_hash: str | None = None) -> RegistryRecord:
         """Commit `report` on-chain via the relayer. Idempotent: an already-registered hash is returned as-is."""
-        h = report_hash(report)
+        return await self.submit_hash(report_hash(report), report.report_id, parent_hash)
+
+    async def submit_hash(self, h: str, record_id: str, parent_hash: str | None = None) -> RegistryRecord:
+        """Commit any canonical-JSON hash (a report, or a campaign manifest) on-chain via the relayer."""
         parent = parent_hash or ZERO_HASH
         record = RegistryRecord(
-            report_id=report.report_id,
+            report_id=record_id,
             report_hash=h,
             parent_hash=parent,
             chain_id=await self.chain_id(),
@@ -229,7 +232,7 @@ class ChainClient:
             tx = await self._call(fn.build_transaction({"from": acct.address, "nonce": nonce}))  # estimates gas
             signed = acct.sign_transaction(tx)
             tx_hash = _to_hex(await self._call(self._w3.eth.send_raw_transaction(signed.raw_transaction)))
-        log.info("registry submit sent report_id=%s tx=%s", report.report_id, tx_hash)
+        log.info("registry submit sent id=%s tx=%s", record_id, tx_hash)
 
         try:
             receipt = await self._w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self._receipt_timeout_s)

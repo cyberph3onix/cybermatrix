@@ -53,6 +53,19 @@
       "AssessRequest": {
         "additionalProperties": false,
         "properties": {
+          "incident_summary": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional: what happened, in your words. Personal details are masked",
+            "title": "Incident Summary"
+          },
           "input": {
             "maxLength": 20000,
             "minLength": 1,
@@ -166,6 +179,19 @@
             "title": "Findings",
             "type": "array"
           },
+          "incident_summary": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What happened, in the submitter's own words (personal details masked). OFF-CHAIN ONLY. Left out of the canonical bytes when empty, so reports made before this field existed hash exactly as before.",
+            "title": "Incident Summary"
+          },
           "indicators": {
             "items": {
               "$ref": "#/components/schemas/Indicator"
@@ -265,9 +291,101 @@
           "ai",
           "recommended_actions",
           "limitations",
-          "related_report_ids"
+          "related_report_ids",
+          "incident_summary"
         ],
         "title": "AssessmentReport",
+        "type": "object"
+      },
+      "Attestation": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "report_hash": {
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "signer": {
+            "title": "Signer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signer",
+          "report_hash",
+          "signature",
+          "created_at"
+        ],
+        "title": "Attestation",
+        "type": "object"
+      },
+      "AttestationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "signature": {
+            "pattern": "^0x[0-9a-fA-F]{130}$",
+            "title": "Signature",
+            "type": "string"
+          },
+          "signer": {
+            "pattern": "^0x[0-9a-fA-F]{40}$",
+            "title": "Signer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signer",
+          "signature"
+        ],
+        "title": "AttestationRequest",
+        "type": "object"
+      },
+      "Attestations": {
+        "additionalProperties": false,
+        "properties": {
+          "attestations": {
+            "items": {
+              "$ref": "#/components/schemas/Attestation"
+            },
+            "title": "Attestations",
+            "type": "array"
+          },
+          "note": {
+            "default": "A signature shows which wallet vouched for this exact report. It is stored by this server, not on-chain, and an address is not a verified identity.",
+            "title": "Note",
+            "type": "string"
+          },
+          "report_hash": {
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "typed_data": {
+            "additionalProperties": true,
+            "description": "EIP-712 typed data to sign with eth_signTypedData_v4",
+            "title": "Typed Data",
+            "type": "object"
+          }
+        },
+        "required": [
+          "report_id",
+          "report_hash",
+          "typed_data",
+          "attestations",
+          "note"
+        ],
+        "title": "Attestations",
         "type": "object"
       },
       "Body_assess_qr": {
@@ -311,6 +429,138 @@
           "url"
         ],
         "title": "Body_assess_screenshot",
+        "type": "object"
+      },
+      "CampaignManifest": {
+        "additionalProperties": false,
+        "description": "A phishing campaign (a /clusters group) frozen for the registry. Its keccak256(JCS) is committed on-chain\nexactly like a report; verify.py and /verify check it the same way. Member reports are referenced by hash.",
+        "properties": {
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "report_hashes": {
+            "description": "keccak256 of each member report, sorted",
+            "items": {
+              "type": "string"
+            },
+            "title": "Report Hashes",
+            "type": "array"
+          },
+          "salt": {
+            "title": "Salt",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": "campaign-1.0.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "shared_indicators": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterIndicator"
+            },
+            "title": "Shared Indicators",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "campaign_id",
+          "salt",
+          "created_at",
+          "cluster_id",
+          "label",
+          "report_hashes",
+          "shared_indicators",
+          "edges"
+        ],
+        "title": "CampaignManifest",
+        "type": "object"
+      },
+      "CampaignRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "chain_id": {
+            "title": "Chain Id",
+            "type": "integer"
+          },
+          "contract_address": {
+            "title": "Contract Address",
+            "type": "string"
+          },
+          "explorer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explorer Url"
+          },
+          "manifest_hash": {
+            "title": "Manifest Hash",
+            "type": "string"
+          },
+          "onchain_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onchain Id"
+          },
+          "tx_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tx Hash"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "manifest_hash",
+          "chain_id",
+          "contract_address",
+          "onchain_id",
+          "tx_hash",
+          "explorer_url"
+        ],
+        "title": "CampaignRecord",
         "type": "object"
       },
       "CertificateSummary": {
@@ -948,6 +1198,76 @@
           "observed_at"
         ],
         "title": "Evidence",
+        "type": "object"
+      },
+      "EvidenceManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRef"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "note": {
+            "default": "Each evidence item can be re-hashed from report.json. Because the report hash covers every item, an item that matches here is also covered by the on-chain commitment.",
+            "title": "Note",
+            "type": "string"
+          },
+          "report_hash": {
+            "description": "keccak256 of the canonical report: the fingerprint committed on-chain",
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "report_hash",
+          "evidence",
+          "note"
+        ],
+        "title": "EvidenceManifest",
+        "type": "object"
+      },
+      "EvidenceRef": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "title": "Check Id",
+            "type": "string"
+          },
+          "index": {
+            "description": "Position of the evidence item within the finding",
+            "title": "Index",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "SHA-256 of the RFC 8785 canonical JSON of this evidence item",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "index",
+          "kind",
+          "source",
+          "sha256"
+        ],
+        "title": "EvidenceRef",
         "type": "object"
       },
       "EvidenceStrength": {
@@ -2342,6 +2662,48 @@
         "summary": "Assess Screenshot"
       }
     },
+    "/campaigns/{campaign_id}": {
+      "get": {
+        "operationId": "get_campaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignManifest"
+                }
+              }
+            },
+            "description": "The registered campaign manifest, byte for byte."
+          },
+          "404": {
+            "description": "Unknown campaign"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Campaign"
+      }
+    },
     "/clusters": {
       "get": {
         "operationId": "clusters",
@@ -2362,6 +2724,46 @@
           }
         },
         "summary": "Clusters"
+      }
+    },
+    "/clusters/{cluster_id}/register": {
+      "post": {
+        "description": "Freeze a cluster as a campaign manifest (member report hashes + shared indicators + edges) and commit its\nhash on-chain. Registering the same cluster again returns the earlier record.",
+        "operationId": "register_campaign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Campaign"
       }
     },
     "/feeds/blocklist.txt": {
@@ -2744,6 +3146,93 @@
         "summary": "Get Report"
       }
     },
+    "/reports/{report_id}/attestations": {
+      "get": {
+        "description": "The typed data a user's wallet signs, and the signatures stored so far.",
+        "operationId": "get_attestations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attestations"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Attestations"
+      },
+      "post": {
+        "operationId": "add_attestation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attestations"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Attestation"
+      }
+    },
     "/reports/{report_id}/certificate-verdict": {
       "get": {
         "operationId": "get_certificate_verdict",
@@ -2831,6 +3320,45 @@
           }
         },
         "summary": "Dispute Reason"
+      }
+    },
+    "/reports/{report_id}/evidence": {
+      "get": {
+        "operationId": "get_evidence_manifest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceManifest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evidence Manifest"
       }
     },
     "/reports/{report_id}/history": {

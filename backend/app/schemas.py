@@ -211,6 +211,9 @@ class AssessmentReport(Strict):
     recommended_actions: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list, description="Always non-empty. Includes unavailable checks and fixed caveats.")
     related_report_ids: list[str] = Field(default_factory=list)
+    incident_summary: str | None = Field(default=None, max_length=1000, description=(
+        "What happened, in the submitter's own words (personal details masked). OFF-CHAIN ONLY. Left out of the "
+        "canonical bytes when empty, so reports made before this field existed hash exactly as before."))
 
 
 # ---------- registry ----------
@@ -269,6 +272,27 @@ class ReportHistory(Strict):
     note: str = ("Statuses are read from the contract. Disputes are sent from your own wallet with a bond, which is "
                  "returned if a validator agrees with you and kept if not. The reason text stays off-chain; only its "
                  "hash is recorded.")
+
+
+class AttestationRequest(Strict):
+    signer: str = Field(pattern=r"^0x[0-9a-fA-F]{40}$")
+    signature: str = Field(pattern=r"^0x[0-9a-fA-F]{130}$")
+
+
+class Attestation(Strict):
+    signer: str
+    report_hash: str
+    signature: str
+    created_at: datetime
+
+
+class Attestations(Strict):
+    report_id: str
+    report_hash: str
+    typed_data: dict[str, Any] = Field(description="EIP-712 typed data to sign with eth_signTypedData_v4")
+    attestations: list[Attestation] = Field(default_factory=list)
+    note: str = ("A signature shows which wallet vouched for this exact report. It is stored by this server, not "
+                 "on-chain, and an address is not a verified identity.")
 
 
 class DisputeReasonRequest(Strict):
@@ -424,6 +448,24 @@ class CertificateVerdict(Strict):
                  "detect a CA's key-generation weakness from a URL.")
 
 
+# ---------- evidence references (derived, not part of the hashed report) ----------
+
+class EvidenceRef(Strict):
+    check_id: str
+    index: int = Field(description="Position of the evidence item within the finding")
+    kind: str
+    source: str
+    sha256: str = Field(description="SHA-256 of the RFC 8785 canonical JSON of this evidence item")
+
+
+class EvidenceManifest(Strict):
+    report_id: str
+    report_hash: str = Field(description="keccak256 of the canonical report: the fingerprint committed on-chain")
+    evidence: list[EvidenceRef]
+    note: str = ("Each evidence item can be re-hashed from report.json. Because the report hash covers every item, an "
+                 "item that matches here is also covered by the on-chain commitment.")
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):
@@ -432,6 +474,8 @@ class AssessRequest(Strict):
     owns_site: bool = Field(default=False, description="Run the exposed-file posture probe. Needs ownership_token")
     ownership_token: str | None = Field(default=None, max_length=64,
                                         description="Grant from POST /ownership/verify for this site's domain")
+    incident_summary: str | None = Field(default=None, max_length=1000,
+                                         description="Optional: what happened, in your words. Personal details are masked")
 
     @field_validator("input")
     @classmethod
@@ -441,9 +485,18 @@ class AssessRequest(Strict):
 
 # ---------- canonical hashing (registry/canonical.py imports this) ----------
 
+# Optional fields added after reports were first registered on-chain. When empty they are left out of the canonical
+# form, so every earlier report (and its on-chain hash) is unchanged.
+OMIT_WHEN_EMPTY = ("incident_summary",)
+
+
 def canonical_bytes(report: AssessmentReport) -> bytes:
     import rfc8785
-    return rfc8785.dumps(report.model_dump(mode="json"))
+    data = report.model_dump(mode="json")
+    for key in OMIT_WHEN_EMPTY:
+        if data.get(key) is None:
+            data.pop(key, None)
+    return rfc8785.dumps(data)
 
 
 def report_hash(report: AssessmentReport) -> str:
@@ -480,6 +533,30 @@ class Cluster(Strict):
     edges: list[ClusterEdge] = Field(default_factory=list, description="Why each report is in the cluster (deterministic)")
     summary: str | None = Field(default=None, description="Two-sentence AI-written description; null when no LLM is configured")
     summary_model: str | None = None
+
+
+class CampaignManifest(Strict):
+    """A phishing campaign (a /clusters group) frozen for the registry. Its keccak256(JCS) is committed on-chain
+    exactly like a report; verify.py and /verify check it the same way. Member reports are referenced by hash."""
+    schema_version: str = "campaign-1.0.0"
+    campaign_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    salt: str = Field(default_factory=lambda: secrets.token_hex(32))
+    created_at: datetime = Field(default_factory=utcnow)
+    cluster_id: str
+    label: str
+    report_hashes: list[str] = Field(description="keccak256 of each member report, sorted")
+    shared_indicators: list[ClusterIndicator]
+    edges: list[ClusterEdge]
+
+
+class CampaignRecord(Strict):
+    campaign_id: str
+    manifest_hash: str
+    chain_id: int
+    contract_address: str
+    onchain_id: int | None = None
+    tx_hash: str | None = None
+    explorer_url: str | None = None
 
 
 class TrendTechnique(Strict):

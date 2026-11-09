@@ -86,3 +86,30 @@ def test_hop_domain_still_never_counts_as_submitted(client):
         _assess(client, m)
     rep = client.get(f"/reports/{_assess(client, 'sbi-secure-pay.top')}").json()
     assert "CORR.PRIOR_REPORTS" not in [f["check_id"] for f in rep["findings"]]
+
+
+def test_a_cluster_can_be_registered_as_a_campaign_and_verified(client):
+    import rfc8785
+    from eth_hash.auto import keccak
+    rids = [_assess(client, m) for m in MESSAGES]
+    [c] = [c for c in client.get("/clusters").json() if set(rids) <= set(c["report_ids"])]
+    r = client.post(f"/clusters/{c['cluster_id']}/register")
+    assert r.status_code == 200, r.text
+    rec = r.json()
+    assert rec["onchain_id"] and rec["tx_hash"]
+    raw = client.get(f"/campaigns/{rec['campaign_id']}").content
+    manifest = __import__("json").loads(raw)
+    # the committed hash is keccak256(JCS(manifest)), the same rule verify.py applies to any file
+    assert "0x" + keccak(rfc8785.dumps(manifest)).hex() == rec["manifest_hash"]
+    member_hashes = sorted(client.get(f"/reports/{x}/evidence").json()["report_hash"] for x in rids)
+    assert manifest["report_hashes"] == member_hashes and manifest["edges"]
+    # the manifest holds report hashes and shared indicators, never message text
+    assert "URGENT" not in raw.decode() and "YONO" not in raw.decode()
+    # idempotent, and /verify accepts the uploaded manifest
+    assert client.post(f"/clusters/{c['cluster_id']}/register").json()["campaign_id"] == rec["campaign_id"]
+    v = client.post("/verify", json=manifest).json()
+    assert v["match"] and v["computed_hash"] == rec["manifest_hash"]
+    manifest["label"] += "!"
+    assert client.post("/verify", json=manifest).json()["match"] is False
+    assert client.get("/campaigns/not-a-uuid").status_code == 404
+    assert client.post("/clusters/c-doesnotexist/register").status_code == 404

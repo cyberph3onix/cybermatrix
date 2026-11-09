@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { feedUrls, getClusters, getImpersonationTrends } from "@/lib/api";
 import { CLASS_STYLE } from "@/lib/classes";
 import type { Cluster, ImpersonationTrend } from "@/lib/types";
+import { CampaignButton } from "@/components/CampaignButton";
 
 const TECHNIQUE_LABEL: Record<string, string> = {
   lookalike_domain: "lookalike domain",
@@ -153,6 +154,8 @@ export default function ClustersPage() {
                       </ul>
                     </details>
                   )}
+
+                  <CampaignButton clusterId={c.cluster_id} />
 
                   {c.member_domains.length > 0 && (
                     <>
