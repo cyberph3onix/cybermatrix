@@ -13,8 +13,10 @@ What we reused, what we borrowed as ideas, and what we deliberately left out. Re
 
 ## Threat-intel sources
 
-- **Google Safe Browsing v5 `urls.search`**: current API; non-commercial use only (the commercial path is Web Risk).
-  Roadmap: switch to `hashes.search` so only 4-byte hash prefixes leave our server, not raw URLs.
+- **Google Safe Browsing v5 `hashes.search`** (default): only 4-byte SHA-256 prefixes of the spec's URL expressions
+  leave our server; full hashes are matched locally. `GSB_MODE=urls` switches to `urls.search` (sends full URLs). No
+  automatic fallback between them, because falling back would leak exactly the URLs that hit an error. Non-commercial
+  use only (the commercial path is Web Risk).
 - **URLhaus** (auth key), **OpenPhish** public feed (downloaded and matched locally, so no URL leaves the server),
   **VirusTotal** (free tier; ≥ 5 engines treated as authoritative).
 - **OpenPhish feed URL:** `openphish.com/feed.txt` now 302-redirects to `raw.githubusercontent.com/openphish/public_feed/…`.

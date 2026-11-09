@@ -53,7 +53,9 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
    sites on a private PSL suffix we now use the earliest certificate naming the site exactly in crt.sh's full CT history
    (`DOMAIN.YOUNG`, source `crt.sh`). Cert Spotter cannot be used for this: it lists unexpired certificates only. Sites
    served only under the platform's wildcard certificate (`*.github.io`) still have no age signal, and the report says so.
-10. **GSB v5 sends the full URL to Google** and is licensed for non-commercial use. A `hashes.search` client that
-    sends only hash prefixes is the privacy-preserving alternative.
+10. **GSB sends only hash prefixes (fixed).** The default `hashes.search` client canonicalises the URL, hashes the
+    Safe Browsing host/path expressions and sends 4-byte prefixes; full hashes are matched locally (a prefix collision
+    is not a hit). Verified live against Google's test pages. `GSB_MODE=urls` restores full-URL `urls.search`. Safe
+    Browsing remains licensed for non-commercial use only.
 11. **UPI QR codes cannot be verified.** We only check whether the payee ID appeared in earlier reports.
 12. **Passive only.** No JavaScript runs, so cloaked or script-built phishing pages can look clean.

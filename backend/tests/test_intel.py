@@ -31,6 +31,7 @@ GSB_URL = gsb.SEARCH
 @respx.mock
 async def test_gsb_hit(monkeypatch):
     monkeypatch.setenv("GSB_API_KEY", "k-secret")
+    monkeypatch.setenv("GSB_MODE", "urls")  # full-URL mode; hashes mode is tested below
     route = respx.get(GSB_URL).mock(return_value=httpx.Response(200, json={
         "threats": [{"url": URL, "threatTypes": ["SOCIAL_ENGINEERING"]}], "cacheDuration": "300s"}))
     run, findings = await gsb.run(make_ctx())
@@ -46,6 +47,7 @@ async def test_gsb_hit(monkeypatch):
 @respx.mock
 async def test_gsb_clean_and_cached(monkeypatch):
     monkeypatch.setenv("GSB_API_KEY", "k")
+    monkeypatch.setenv("GSB_MODE", "urls")  # full-URL mode; hashes mode is tested below
     route = respx.get(GSB_URL).mock(return_value=httpx.Response(200, json={"cacheDuration": "300s"}))
     ctx = make_ctx()
     run, findings = await gsb.run(ctx)
@@ -58,6 +60,7 @@ async def test_gsb_clean_and_cached(monkeypatch):
 @respx.mock
 async def test_gsb_checks_redirect_destination(monkeypatch):
     monkeypatch.setenv("GSB_API_KEY", "k")
+    monkeypatch.setenv("GSB_MODE", "urls")  # full-URL mode; hashes mode is tested below
     dest = "https://evil.example.top/x"
 
     def handler(request: httpx.Request):
@@ -79,6 +82,7 @@ async def test_gsb_missing_key_unavailable():
 @respx.mock
 async def test_gsb_rate_limited_unavailable(monkeypatch):
     monkeypatch.setenv("GSB_API_KEY", "k")
+    monkeypatch.setenv("GSB_MODE", "urls")  # full-URL mode; hashes mode is tested below
     respx.get(GSB_URL).mock(return_value=httpx.Response(429))
     run, findings = await gsb.run(make_ctx())
     assert (run.status, findings) == ("unavailable", [])
@@ -314,9 +318,60 @@ async def test_openphish_redirect_is_not_treated_as_a_feed(tmp_path):
 async def test_gsb_binary_protobuf_response(monkeypatch):
     """Recorded from the live service: it answers in protobuf (phishing test URL, SOCIAL_ENGINEERING)."""
     monkeypatch.setenv("GSB_API_KEY", "k")
+    monkeypatch.setenv("GSB_MODE", "urls")  # full-URL mode; hashes mode is tested below
     body = bytes.fromhex("0a310a2c7465737473616665627" "26f77" "73696e672e617070" "73706f742e636f6d2f732f70" "6869736869" "6e672e68746d6c" "120102" "120308ac02")
     respx.get(GSB_URL).mock(return_value=httpx.Response(200, content=body))
     run, findings = await gsb.run(make_ctx("https://testsafebrowsing.appspot.com/s/phishing.html"))
     assert run.status == "completed" and [f.check_id for f in findings] == ["URL.INTEL.GSB"]
     assert findings[0].evidence[0].data["threat_types"] == ["SOCIAL_ENGINEERING"]
     assert gsb.parse_search_response(bytes.fromhex("1203" "08ac02")) == []
+
+
+
+# ---------- hashes.search (default mode: only 4-byte hash prefixes leave the server) ----------
+
+def test_gsb_expressions_follow_the_spec_examples():
+    assert gsb.expressions("http://a.b.c/1/2.html?param=1") == [
+        "a.b.c/1/2.html?param=1", "a.b.c/1/2.html", "a.b.c/", "a.b.c/1/",
+        "b.c/1/2.html?param=1", "b.c/1/2.html", "b.c/", "b.c/1/"]
+    hosts = {e.split("/")[0] for e in gsb.expressions("http://a.b.c.d.e.f.g/1.html")}
+    assert hosts == {"a.b.c.d.e.f.g", "c.d.e.f.g", "d.e.f.g", "e.f.g", "f.g"}
+    assert gsb.expressions("http://1.2.3.4/1/") == ["1.2.3.4/1/", "1.2.3.4/"]
+    assert gsb.canonicalize("http://3279880203/blah")[0] == "195.127.0.11"
+    assert gsb.canonicalize("http://host/%25%32%35")[1] == "/%25"
+    assert gsb.canonicalize("http://www.GOOgle.com/#frag")[:2] == ("www.google.com", "/")
+    assert gsb.canonicalize("http://www.google.com/blah/..")[1] == "/"
+
+
+def _full_hashes_pb(entries):
+    """SearchHashesResponse protobuf: full_hashes(1) { full_hash(1), full_hash_details(2) { threat_type(1) } }."""
+    def ld(num, payload):
+        return bytes([num << 3 | 2, len(payload)]) + payload
+    return b"".join(ld(1, ld(1, h) + b"".join(ld(2, bytes([0x08, t])) for t in types)) for h, types in entries)
+
+
+@respx.mock
+async def test_gsb_hashes_mode_never_sends_the_url(monkeypatch):
+    import base64
+    import hashlib
+    monkeypatch.setenv("GSB_API_KEY", "k")
+    target = "https://login-paypa1.example/s/phishing.html?id=7"
+    listed = hashlib.sha256(b"login-paypa1.example/s/phishing.html").digest()
+    collision = listed[:4] + b"\x00" * 28  # same prefix, different full hash: must not count
+    route = respx.get(gsb.HASHES).mock(return_value=httpx.Response(200, content=_full_hashes_pb([(collision, [1]), (listed, [2])])))
+    run, findings = await gsb.run(make_ctx(target, hops=[target]))
+    assert run.status == "completed"
+    [f] = findings
+    assert f.evidence[0].data["threat_types"] == ["SOCIAL_ENGINEERING"]  # the colliding MALWARE entry is ignored
+    sent = str(route.calls[0].request.url)
+    assert "paypa1" not in sent and "phishing" not in sent
+    prefixes = {base64.b64decode(v) for k, v in route.calls[0].request.url.params.multi_items() if k == "hashPrefixes"}
+    assert listed[:4] in prefixes and all(len(p) == 4 for p in prefixes)
+
+
+@respx.mock
+async def test_gsb_hashes_mode_clean(monkeypatch):
+    monkeypatch.setenv("GSB_API_KEY", "k")
+    respx.get(gsb.HASHES).mock(return_value=httpx.Response(200, content=b""))
+    run, findings = await gsb.run(make_ctx())
+    assert (run.status, findings) == ("completed", [])
