@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --ink: #16212c;
+  --paper: #f3f5f7;
+  --panel: #ffffff;
+  --rule: #d3dae1;
+  --muted: #55626f;
+  --accent: #1c4f7c;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-rule: var(--rule);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+
+  /* One hue + glyph per risk class. "low" is teal, deliberately not a go-ahead green. */
+  --color-c-low: #1b6b73;
+  --color-c-low-tint: #e6f2f3;
+  --color-c-low-ink: #0f3f44;
+  --color-c-susp: #b7791f;
+  --color-c-susp-tint: #fbf1dc;
+  --color-c-susp-ink: #6b4510;
+  --color-c-high: #c2410c;
+  --color-c-high-tint: #fdebe1;
+  --color-c-high-ink: #7a2a08;
+  --color-c-mal: #9b1c2c;
+  --color-c-mal-tint: #f9e3e6;
+  --color-c-mal-ink: #5f0f1a;
+  --color-c-inc: #5b6672;
+  --color-c-inc-tint: #e8ebee;
+  --color-c-inc-ink: #343d46;
+
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Coverage bar fills in once on load: the only non-interactive motion in the app. */
+@keyframes fill-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+.fill-in {
+  transform-origin: left;
+  animation: fill-in 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fill-in {
+    animation: none;
+  }
+}
