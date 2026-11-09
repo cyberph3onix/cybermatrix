@@ -58,8 +58,17 @@ Confidence:
 ## 5. False-positive controls
 
 - **Allowlist dampening:** if the registrable domain is a protected brand's official domain or in the Tranco
-  top 10k, drop `URL.LOOKALIKE.*`, `DOMAIN.*` and `URL.KEYWORDS` heuristics. **Never** drop TI or TLS findings,
-  because legitimate sites get compromised.
+  top 10k (and the host is not abusable, see below), drop `URL.LOOKALIKE.*`, `DOMAIN.*` and `URL.KEYWORDS`
+  heuristics. **Never** drop TI or TLS findings, because legitimate sites get compromised.
+- **Brand in path:** `URL.BRAND_IN_SUBDOMAIN` whose only match is in the *path* (e.g.
+  `web.archive.org/web/…/sbi.co.in`) is dropped on allowlisted, non-abusable hosts. A match in the *subdomain* is
+  never dampened. The finding's evidence records `match_location: subdomain | path`.
+- **Redirects between a brand's own domains:** `REDIRECT.CROSS_DOMAIN` does not fire, and the hop does not count
+  toward `REDIRECT.LONG_CHAIN`, when both registrable domains are official domains of the same brand
+  (`sbi.co.in → sbi.bank.in`).
+- **Redirects to allowlisted destinations:** `REDIRECT.CROSS_DOMAIN` is dropped when the *final* host is official
+  or in the Tranco top 10k and not abusable (`bit.ly → amazon.in`). `bit.ly → evil.xyz` still fires.
+  `REDIRECT.LONG_CHAIN` is never dampened.
 - **Abusable hosts never get dampening:** `abusable_hosts.txt` (sites.google.com, docs.google.com/forms,
   forms.gle, firebaseapp.com, web.app, pages.dev, netlify.app, vercel.app, github.io, IPFS gateways,
   ngrok-free.app, blogspot.com …).
