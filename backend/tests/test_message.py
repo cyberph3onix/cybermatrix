@@ -218,3 +218,32 @@ async def test_eval_sample_stays_accurate():
     from eval.scamshield import evaluate, summary
     s = summary(await evaluate())
     assert s["tp"] >= 23 and s["fp"] <= 1, s
+
+
+SPOOF = """Authentication-Results: mx.google.com;
+       dkim=none; spf=softfail (domain of transitioning alerts@hdfcbank.com does not designate 203.0.113.5) smtp.mailfrom=alerts@hdfcbank.com;
+       dmarc=fail (p=REJECT) header.from=hdfcbank.com
+Authentication-Results: relay.attacker.example; dmarc=pass
+From: HDFC Bank <alerts@hdfcbank.com>
+To: you@example.com
+Subject: Your account is on hold
+
+Please verify your details.
+"""
+
+
+def test_dmarc_fail_from_pasted_headers():
+    fs = message.header_findings(SPOOF, get_index())
+    [f] = [f for f in fs if f.check_id.startswith("MSG.DMARC")]
+    assert (f.check_id, f.severity, f.strength) == ("MSG.DMARC_FAIL", "high", "technical")
+    assert "pasted" in f.limitation and f.evidence[0].data["results"]["dmarc"] == "fail"  # top-most header wins
+
+
+def test_spf_fail_without_dkim_and_pass_cases():
+    base = "From: a@shop.example\nTo: b@example.com\nSubject: hi\n"
+    spf_only = "Received-SPF: fail (shop.example does not designate 198.51.100.7)\n" + base + "\nbody"
+    assert [f.check_id for f in message.header_findings(spf_only, get_index())] == ["MSG.SPF_DKIM_FAIL"]
+    signed = "Authentication-Results: mx; spf=softfail; dkim=pass header.d=shop.example\n" + base + "\nbody"
+    assert message.header_findings(signed, get_index()) == []  # a valid signature is enough
+    clean = "Authentication-Results: mx; spf=pass; dkim=pass; dmarc=pass\n" + base + "\nbody"
+    assert message.header_findings(clean, get_index()) == []

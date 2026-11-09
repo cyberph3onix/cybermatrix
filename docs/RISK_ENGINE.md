@@ -139,6 +139,8 @@ Confidence:
 | MSG.SCAM_PATTERN | social_engineering | medium | heuristic | Two different pressure tactics (urgency, authority, reward; a prize/guaranteed-return offer counts as two) **and** a way to act on them (link, phone, UPI ID, email, payment/credential request, "reply YES") |
 | MSG.SENDER_DOMAIN_MISMATCH | impersonation | high | technical | Email From/Reply-To domain doesn't match the claimed organisation's official domain (headers present) |
 | MSG.LINK_TEXT_MISMATCH | phishing | high | technical | Displayed link text domain ≠ actual href domain |
+| MSG.DMARC_FAIL | impersonation | high | technical | Pasted headers: the receiving server's top-most `Authentication-Results` says `dmarc=fail` |
+| MSG.SPF_DKIM_FAIL | impersonation | medium | technical | Pasted headers: `spf=fail`/`softfail`, DKIM not `pass`, and no DMARC verdict |
 
 Extracted URLs run through the full URL pipeline, and their findings are attached with an `indicator` reference.
 Bare domains with no scheme ("update KYC at hdfc-verify.in") count as links when they are lowercase and end in a real

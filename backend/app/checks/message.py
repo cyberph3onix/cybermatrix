@@ -246,10 +246,49 @@ def has_headers(text: str) -> bool:
     return bool(re.search(r"^From:\s*\S", head, re.M | re.I)) and bool(re.search(r"^(?:Subject|To|Date|Reply-To):", head, re.M | re.I))
 
 
+_AUTH_RESULT = re.compile(r"\b(spf|dkim|dmarc)\s*=\s*([a-z]+)", re.I)
+PASTED = ("Read from headers you pasted. Whoever pasted them could have edited them, so this is reliable only for mail "
+          "you received yourself, copied with your mail app's \"show original\".")
+
+
+def auth_results(msg) -> dict[str, str]:
+    """spf/dkim/dmarc verdicts from the receiving server's Authentication-Results (the top-most one wins, since it
+    is added last, by the server that delivered the mail to you), falling back to Received-SPF."""
+    out: dict[str, str] = {}
+    headers = msg.get_all("Authentication-Results") or []
+    if headers:
+        for mech, verdict in _AUTH_RESULT.findall(str(headers[0])):
+            out.setdefault(mech.lower(), verdict.lower())
+    rspf = msg.get("Received-SPF")
+    if "spf" not in out and rspf:
+        out["spf"] = str(rspf).split()[0].lower()
+    return out
+
+
+def auth_findings(msg) -> list[Finding]:
+    res = auth_results(msg)
+    if not res:
+        return []
+    shown = ", ".join(f"{k}={v}" for k, v in sorted(res.items()))
+    ev = [evidence("email_header", f"Authentication-Results: {shown}", SOURCE, {"results": res}, observed_at=utcnow())]
+    if res.get("dmarc") == "fail":
+        return [make_finding("MSG.DMARC_FAIL", "The sender's domain did not authorise this email (DMARC fail)", ev,
+                             "The receiving mail server found that this message was not sent or signed by the domain in "
+                             "the From address: the classic sign of a spoofed sender.",
+                             "Treat the sender as fake. Do not reply, click or open attachments.", limitation=PASTED)]
+    if res.get("spf") in ("fail", "softfail") and res.get("dkim") != "pass" and "dmarc" not in res:
+        return [make_finding("MSG.SPF_DKIM_FAIL", "The sending server is not authorised for this domain (SPF fail, no DKIM)",
+                             ev, "The message came from a server the domain does not list, and it carries no valid signature.",
+                             "Be suspicious of the sender; check with the organisation through its official channels.",
+                             limitation=PASTED)]
+    return []
+
+
 def header_findings(text: str, idx: BrandIndex) -> list[Finding]:
     out: list[Finding] = []
     if has_headers(text):
         msg = message_from_string(text)
+        out += auth_findings(msg)
         body = msg.get_payload() if not msg.is_multipart() else " ".join(
             str(p.get_payload()) for p in msg.walk() if not p.is_multipart())
         claimed = idx.brands_claimed_in(f"{msg.get('Subject', '')} {body} {parseaddr(msg.get('From', ''))[0]}")
@@ -267,7 +306,7 @@ def header_findings(text: str, idx: BrandIndex) -> list[Finding]:
                               {"header": hdr, "sender_domain": dom, "brand": b.id}, observed_at=utcnow())],
                     "Genuine mail from this organisation comes from its own domain.",
                     "Do not reply or click anything; contact the organisation through its official channels.",
-                    limitation="Headers can be forged; this checks the claimed address, not SPF/DKIM."))
+                    limitation="Headers can be forged; this checks the claimed address. SPF/DKIM/DMARC verdicts, when pasted, are checked separately."))
                 break
     if "<a " in text.lower():
         for shown, href in link_text_mismatches(text)[:3]:
