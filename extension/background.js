@@ -53,21 +53,35 @@ chrome.webNavigation.onBeforeNavigate.addListener(async ({ tabId, frameId, url }
   try {
     q = await quickCheck(url);
   } catch {
-    chrome.action.setBadgeText({ tabId, text: "?" });
-    chrome.action.setTitle({ tabId, title: "CyberMatrix couldn't check this page (server unreachable)" });
-    return;
+    q = { classification: "unreachable", classification_reason: "CyberMatrix couldn't check this page (server unreachable)." };
   }
   if (DANGER.has(q.classification)) {
     await chrome.storage.session.set({ [`cm:warn:${tabId}`]: { url, q } });
     chrome.tabs.update(tabId, { url: chrome.runtime.getURL(`warning.html?tab=${tabId}`) });
     return;
   }
-  const [label, color] = LABELS[q.classification] ?? [q.classification, "#5b6672"];
-  const flag = q.classification === "suspicious";
-  chrome.action.setBadgeBackgroundColor({ tabId, color });
-  chrome.action.setBadgeText({ tabId, text: flag ? "!" : "" });
-  chrome.action.setTitle({ tabId, title: `CyberMatrix quick check: ${label}. ${q.classification_reason}` });
+  // The browser resets a tab's badge when the navigation commits (error pages included), which can happen before or
+  // after this check returns. Remember the result and apply it now and again on commit.
+  const badge = { url, classification: q.classification, reason: q.classification_reason };
+  await chrome.storage.session.set({ [`cm:badge:${tabId}`]: badge });
+  applyBadge(tabId, badge);
 });
+
+function applyBadge(tabId, { classification, reason }) {
+  const [label, color] = LABELS[classification] ?? ["Not checked", "#5b6672"];
+  chrome.action.setBadgeBackgroundColor({ tabId, color });
+  chrome.action.setBadgeText({ tabId, text: { suspicious: "!", unreachable: "?" }[classification] ?? "" });
+  chrome.action.setTitle({ tabId, title: `CyberMatrix quick check: ${label}. ${reason}` });
+}
+
+async function reapply({ tabId, frameId, url }) {
+  if (frameId !== 0) return;
+  const key = `cm:badge:${tabId}`;
+  const b = (await chrome.storage.session.get(key))[key];
+  if (b && b.url === url) applyBadge(tabId, b);
+}
+chrome.webNavigation.onCommitted.addListener(reapply);
+chrome.webNavigation.onErrorOccurred.addListener(reapply); // e.g. "site can't be reached"
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === "cm-allow" && checkable(msg.url)) {

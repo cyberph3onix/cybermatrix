@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CyberMatrix link check",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Check links with CyberMatrix before you open them. Optional real-time protection warns before a dangerous page loads.",
   "permissions": [
     "contextMenus",
