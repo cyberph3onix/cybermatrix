@@ -136,3 +136,17 @@ cases) and `contracts/test/ThreatRegistry.t.sol` (reporter-role cases). Each fai
 19. **Decompression is capped per read, not per byte.** The 2 MB cap is checked after each decoded chunk, so one 64 KB
     gzip read can briefly inflate to ~64 MB before the fetch is cut off. httpx would also decode Brotli/zstd if those
     packages were ever installed, with a higher ratio.
+20. **Real-time protection sees browsing history.** With it on, the extension sends the address of every page opened
+    to the API. The server neither stores nor logs it and never fetches the page, but whoever runs the API could.
+    It is off by default, and only a quick check runs (no page content, certificate or redirect checks), so a
+    phishing page on a fresh, unlisted domain with no lookalike pattern passes as `inconclusive`.
+21. **Screenshots can't be redacted.** Text is masked before the LLM (rule 8); a screenshot is sent as an image, so
+    names or balances in it reach the AI provider. The route requires explicit consent, the image is re-encoded
+    (metadata stripped, at most 1280 px) and never stored, and the UI asks users to crop personal details. The
+    brand reading is an AI judgement, so the finding is heuristic and alone never goes past `suspicious`.
+22. **The feed is only as good as this server's reports.** It lists links from reports at `high_risk` or worse.
+    A wrong report stays listed until a validator rejects it on-chain. Allowlisted sites are never listed, but a
+    small legitimate site that was wrongly flagged can be.
+23. **The org dashboard trusts its link.** Like CT watches, the dashboard id is a bearer token with no login. All it
+    shows is derived from public information, and impersonation counts cover reports on this server only.
+

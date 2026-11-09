@@ -38,6 +38,7 @@ CATALOGUE: dict[str, Meta] = {
     "PAGE.FORM_ACTION_CROSS_DOMAIN": Meta("phishing", "high", "technical"),
     "PAGE.BRAND_MISMATCH": Meta("impersonation", "medium", "technical"),
     "PAGE.LLM_CLAIMED_BRAND": Meta("impersonation", "medium", "heuristic"),
+    "PAGE.SCREENSHOT_BRAND_MISMATCH": Meta("impersonation", "high", "heuristic"),
     "TLS.DISTRUSTED_CA": Meta("tls_trust", "critical", "authoritative"),
     "TLS.REMOVED_ROOT": Meta("tls_trust", "high", "authoritative"),
     "TLS.REVOKED": Meta("tls_trust", "critical", "authoritative"),

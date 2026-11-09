@@ -40,3 +40,6 @@ export type OwnershipChallenge = S["OwnershipChallenge"];
 export type OwnershipGrant = S["OwnershipGrant"];
 export type ImpersonationTrend = S["ImpersonationTrend"];
 export type Watch = S["Watch"];
+export type QuickCheck = S["QuickCheck"];
+export type OrgDashboard = S["OrgDashboard"];
+export type OrgDomain = S["OrgDomain"];

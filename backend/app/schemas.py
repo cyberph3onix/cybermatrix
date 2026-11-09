@@ -335,6 +335,78 @@ class Watch(Strict):
                  "usually routine renewal; one from a CA you don't use, or for a name you don't recognise, is worth checking.")
 
 
+# ---------- real-time protection (browser extension) ----------
+
+class QuickCheckRequest(Strict):
+    url: str = Field(min_length=1, max_length=2048)
+
+
+class QuickFinding(Strict):
+    check_id: str
+    title: str
+    severity: Severity
+
+
+class QuickCheck(Strict):
+    """Fast pre-navigation check: URL structure, lookalikes, Safe Browsing, OpenPhish and earlier reports on this
+    server. The page is never fetched and nothing is stored."""
+    url: str
+    classification: RiskClass
+    classification_reason: str
+    coverage_percent: int
+    findings: list[QuickFinding] = Field(default_factory=list)
+    note: str = ("Quick check only: the page was not fetched, so certificate, content and redirect checks did not run. "
+                 "Run a full assessment for evidence.")
+
+
+# ---------- organisation dashboard ----------
+
+class OrgRequest(Strict):
+    name: str = Field(min_length=1, max_length=80)
+    domains: list[str] = Field(min_length=1, max_length=20)
+
+
+class PostureCount(Strict):
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+
+
+class OrgLatestReport(Strict):
+    report_id: str
+    classification: RiskClass
+    coverage_percent: int
+    created_at: datetime
+    posture: PostureCount
+    posture_titles: list[str] = Field(default_factory=list, description="Highest-severity posture findings first")
+
+
+class OrgImpersonation(Strict):
+    reports: int = Field(description="Stored reports at suspicious or worse that imitate this domain or its brand")
+    report_ids: list[str] = Field(default_factory=list, description="Most recent first, at most 5")
+    lookalike_domains: list[str] = Field(default_factory=list)
+
+
+class OrgDomain(Strict):
+    domain: str
+    latest: OrgLatestReport | None = None
+    watch_id: str | None = None
+    ct_alerts: int = 0
+    ct_new_issuer_alerts: int = 0
+    ct_last_checked: datetime | None = None
+    impersonation: OrgImpersonation
+
+
+class OrgDashboard(Strict):
+    org_id: str = Field(description="Keep this: it is the only way to open the dashboard")
+    name: str
+    created_at: datetime
+    last_scan: datetime | None = None
+    domains: list[OrgDomain]
+    note: str = ("Posture comes from the latest assessment of each domain's home page. CT alerts are new certificates "
+                 "since monitoring started. Impersonation counts reports on this server only.")
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):

@@ -32,6 +32,8 @@ class AppState:
     register_global: RateLimiter = field(default_factory=lambda: RateLimiter(REGISTER_MAX_PER_HOUR, 3600))
     owns_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(3, 60))  # exposed-file probes (owner-verified)
     verify_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(30, 60))  # each one is an RPC call
+    quick_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(120, 60))  # one per page the extension opens
+    feed_limiter: RateLimiter = field(default_factory=lambda: RateLimiter(30, 60))
     assess_slots: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(MAX_CONCURRENT_ASSESSMENTS))
     register_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     cluster_summaries: dict[str, str] = field(default_factory=dict)  # cache_key -> text

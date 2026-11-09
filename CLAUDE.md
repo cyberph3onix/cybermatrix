@@ -47,7 +47,9 @@ backend/app/
                                 GET /reports/{id}/verify, GET /clusters, POST /assess/qr,
                                 GET /reports/{id}/history, POST /reports/{id}/dispute-reason, POST /reports/{id}/reassess,
                                 POST /ownership/challenge, POST /ownership/verify, GET /trends/impersonation,
-                                POST /watch, GET /watch/{id}
+                                POST /watch, GET /watch/{id}, POST /quick-check, POST /assess/screenshot,
+                                GET /feeds/stix, GET /feeds/blocklist.txt, POST /orgs, GET /orgs/{id}, POST /orgs/{id}/scan
+  quick.py, feed.py, screenshot.py, org.py   real-time check, threat-intel feed, screenshot impersonation, org dashboard
   schemas.py                    THE data contract — do not change shape without updating frontend types
   fetch/safe_fetch.py, fetch/api_client.py
   checks/url_structure.py, lookalike.py, redirects.py, page.py, domain_rdap.py,

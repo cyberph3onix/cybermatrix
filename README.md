@@ -61,8 +61,19 @@ After changing `backend/app/schemas.py` or any route, regenerate the frontend ty
 
 ## Browser extension
 
-`extension/` holds a Manifest V3 extension: right-click a link to check it before opening it. Load it unpacked
-(see [`extension/README.md`](extension/README.md)). It only sends links you choose.
+`extension/` holds a Manifest V3 extension: right-click a link to check it before opening it, or tick "include a
+screenshot" in the popup. Optional real-time protection (off by default) quick-checks every page you open and shows
+a warning before a high-risk page loads. Load it unpacked (see [`extension/README.md`](extension/README.md)).
+
+## More than single checks
+
+- **Organisation dashboard** (`/org`): one page for all of an organisation's domains: security posture from the
+  latest assessment, new certificates from Certificate Transparency, and lookalike sites reported here.
+- **Threat-intel feed**: `GET /feeds/stix` (STIX 2.1) and `GET /feeds/blocklist.txt` list links and domains from
+  high-risk reports. Query strings are removed, redirect hops and allowlisted sites are never listed, and reports a
+  validator rejected on-chain are left out.
+- **Screenshot impersonation**: add a screenshot to a link (web app or extension). A vision model reads which
+  organisation the page shows and code compares it with the domain (`PAGE.SCREENSHOT_BRAND_MISMATCH`).
 
 ## Development
 

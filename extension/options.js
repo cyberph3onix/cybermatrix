@@ -3,10 +3,12 @@ import { DEFAULTS, settings } from "./common.js";
 const s = await settings();
 document.getElementById("api").value = s.api;
 document.getElementById("app").value = s.app;
+document.getElementById("realtime").checked = s.realtime;
 
 document.getElementById("save").addEventListener("click", async () => {
   const api = document.getElementById("api").value.trim() || DEFAULTS.api;
   const app = document.getElementById("app").value.trim() || DEFAULTS.app;
+  const realtime = document.getElementById("realtime").checked;
   const msg = document.getElementById("msg");
   try {
     const origin = new URL(api).origin;
@@ -14,7 +16,7 @@ document.getElementById("save").addEventListener("click", async () => {
       const ok = await chrome.permissions.request({ origins: [origin + "/*"] });
       if (!ok) throw new Error(`Permission to reach ${origin} was refused.`);
     }
-    await chrome.storage.sync.set({ api, app });
+    await chrome.storage.sync.set({ api, app, realtime });
     msg.textContent = "Saved.";
   } catch (e) {
     msg.textContent = String(e.message || e);

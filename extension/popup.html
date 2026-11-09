@@ -17,9 +17,14 @@
 <body>
   <h1>Check this page</h1>
   <div class="url" id="url"></div>
+  <label class="note" style="display:flex;gap:6px;align-items:flex-start">
+    <input type="checkbox" id="shot" style="margin-top:2px">
+    <span>Include a screenshot of this tab. An AI model reads which organisation the page shows and we compare it
+      with the address. The image goes to the AI provider and is not stored.</span>
+  </label>
   <button id="go">Check with CyberMatrix</button>
   <div id="out"></div>
-  <p class="note">Only the address of this tab is sent, and only when you press the button.
+  <p class="note">Only the address of this tab (and the screenshot, if ticked) is sent, and only when you press the button.
     The best result is “low risk”, never “safe”. <a href="options.html" target="_blank">Settings</a></p>
   <script type="module" src="popup.js"></script>
 </body>

@@ -14,11 +14,14 @@ class LlmUnavailable(Exception):
     """No API key, network error, refusal or malformed output."""
 
 
+Image = tuple[bytes, str]  # (bytes, mime type); only app/screenshot.py sends one, after re-encoding it
+
+
 class LlmClient(Protocol):
     model: str
 
     async def call_tool(self, *, system: str, user: str, tool_name: str, schema: dict[str, Any],
-                        max_tokens: int = 700) -> dict[str, Any]: ...
+                        max_tokens: int = 700, image: Image | None = None) -> dict[str, Any]: ...
 
 
 class AnthropicLlm:
@@ -33,11 +36,17 @@ class AnthropicLlm:
         self._client = anthropic.AsyncAnthropic(api_key=key, timeout=20.0, max_retries=1, http_client=http_client)
 
     async def call_tool(self, *, system: str, user: str, tool_name: str, schema: dict[str, Any],
-                        max_tokens: int = 700) -> dict[str, Any]:
+                        max_tokens: int = 700, image: Image | None = None) -> dict[str, Any]:
+        import base64
+        content: Any = user
+        if image is not None:
+            content = [{"type": "image", "source": {"type": "base64", "media_type": image[1],
+                                                    "data": base64.b64encode(image[0]).decode()}},
+                       {"type": "text", "text": user}]
         try:
             r = await self._client.messages.create(
                 model=MODEL, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": user}],
+                messages=[{"role": "user", "content": content}],
                 tools=[{"name": tool_name, "description": "Return the structured result.", "input_schema": schema}],
                 tool_choice={"type": "tool", "name": tool_name})
         except Exception as e:  # noqa: BLE001 - never leak key/request details
@@ -75,10 +84,14 @@ class GeminiLlm:
         self._http = httpx.AsyncClient(timeout=20.0, follow_redirects=False, trust_env=False)
 
     async def call_tool(self, *, system: str, user: str, tool_name: str, schema: dict[str, Any],
-                        max_tokens: int = 700) -> dict[str, Any]:
+                        max_tokens: int = 700, image: Image | None = None) -> dict[str, Any]:
+        import base64
         import json
+        parts: list[dict[str, Any]] = [{"text": user}]
+        if image is not None:
+            parts.insert(0, {"inlineData": {"mimeType": image[1], "data": base64.b64encode(image[0]).decode()}})
         body = {"systemInstruction": {"parts": [{"text": system}]},
-                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                "contents": [{"role": "user", "parts": parts}],
                 "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0,
                                      "responseMimeType": "application/json", "responseJsonSchema": schema}}
         out: Any = None

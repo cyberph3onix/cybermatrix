@@ -1,26 +1,31 @@
 """HTTP routes. Thin: validation, rate limits and persistence; the work happens in pipeline/ and registry/."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
+import time
 from collections.abc import AsyncIterator
 from datetime import UTC
 from typing import Annotated, Any
 
 import rfc8785
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import ownership, store, watch
+from app import feed, ownership, quick, screenshot, store, watch
+from app import org as orgs
 from app.ai.cluster_summary import add_summaries
 from app.ai.explain import explain
 from app.ai.llm import LlmUnavailable
 from app.ai.redact import redact
 from app.api.state import AppState
+from app.brands import get_index
 from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters, impersonation_trends
-from app.db import DisputeReasonRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
+from app.db import DisputeReasonRow, OrgRow, OwnershipRow, RegistryRow, WatchAlertRow, WatchRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
@@ -34,15 +39,20 @@ from app.schemas import (
     AssessmentReport,
     AssessRequest,
     AssessResponse,
+    CheckStatus,
     Cluster,
     DisputeInfo,
     DisputePrepared,
     DisputeReasonRequest,
     ImpersonationTrend,
+    OrgDashboard,
+    OrgRequest,
     OwnershipChallenge,
     OwnershipChallengeRequest,
     OwnershipGrant,
     OwnershipVerifyRequest,
+    QuickCheck,
+    QuickCheckRequest,
     RegistryRecord,
     RegistryStatus,
     ReportHistory,
@@ -129,7 +139,8 @@ async def _explain(st: AppState, report: AssessmentReport, untrusted: str | None
 
 
 async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, qr: bool = False,
-                            owns_site: bool = False) -> AssessResponse:
+                            owns_site: bool = False, post=None) -> AssessResponse:
+    """`post` (optional) transforms the report after the checks and before correlation, explanation and storage."""
     try:
         parsed = parse_url(url_input)
     except URLParseError as e:
@@ -138,6 +149,8 @@ async def _assess_and_store(st: AppState, db: AsyncSession, url_input: str, *, q
         raise HTTPException(422, "Only http and https links can be assessed.")
     async with st.assess_slots:
         report = await assess_url(url_input, deps=st.deps, owns_site=owns_site)
+    if post is not None:
+        report = await post(report)
     report = await _explain(st, await apply_correlation(db, report))
     if qr:
         report = report.model_copy(update={"subject_type": SubjectType.QR.value})
@@ -530,6 +543,135 @@ async def get_watch(watch_id: str, db: Db) -> Watch:
     if w is None:
         raise HTTPException(404, "No watch with this ID.")
     return await _watch_view(db, w)
+
+
+# ---------- real-time protection (browser extension) ----------
+
+@router.post("/quick-check", response_model=QuickCheck, dependencies=[Depends(_limit("quick_limiter"))])
+async def quick_check(req: QuickCheckRequest, st: St, db: Db) -> QuickCheck:
+    """Fast check for every page the extension opens. The page is not fetched and nothing is stored or logged."""
+    try:
+        parsed = parse_url(req.url)
+    except URLParseError as e:
+        raise HTTPException(422, f"That doesn't look like a valid link ({e}).") from None
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(422, "Only http and https links can be checked.")
+    return await quick.quick_check(db, parsed, deps=st.deps)
+
+
+# ---------- screenshot impersonation ----------
+
+@router.post("/assess/screenshot", response_model=AssessResponse, dependencies=[Depends(_limit("assess_limiter"))])
+async def assess_screenshot(st: St, db: Db,
+                            file: Annotated[UploadFile, File(description="PNG/JPEG/WebP screenshot of the page")],
+                            url: Annotated[str, Form(description="Address the page was shown at", max_length=MAX_URL_CHARS)],
+                            consent: Annotated[bool, Form(description="The user agreed the image goes to the AI provider")] = False,
+                            ) -> AssessResponse:
+    """Full assessment of `url` plus PAGE.SCREENSHOT_BRAND_MISMATCH: a vision model reads which brand the screenshot
+    shows; code compares it with the page's domain. The image is never stored."""
+    if not consent:
+        raise HTTPException(422, "A screenshot can show personal details and is sent to the AI provider. "
+                                 "Confirm consent (and crop out anything personal) to continue.")
+    llm = st.llm
+    if llm is None:
+        raise HTTPException(503, "Screenshot analysis needs an AI model, and none is configured on this server.")
+    try:
+        jpeg = screenshot.prepare_image(await file.read(screenshot.MAX_BYTES + 1))
+    except screenshot.ScreenshotError as e:
+        raise HTTPException(422, str(e)) from None
+    t0 = time.monotonic()
+    claim_task = asyncio.ensure_future(screenshot.extract(llm, jpeg))
+
+    async def post(report: AssessmentReport) -> AssessmentReport:
+        shown_at = report.redirect_chain[-1].url if report.redirect_chain else report.normalized_subject
+        try:
+            claim = await claim_task
+        except LlmUnavailable as e:
+            return screenshot.merge(report, screenshot.run_record(CheckStatus.UNAVAILABLE, llm.model, t0, str(e)), [])
+        findings = screenshot.decide(claim, shown_at, st.deps.brands or get_index(), model=llm.model)
+        return screenshot.merge(report, screenshot.run_record(CheckStatus.COMPLETED, llm.model, t0), findings)
+
+    try:
+        return await _assess_and_store(st, db, url.strip(), post=post)
+    finally:
+        claim_task.cancel()
+
+
+# ---------- threat-intel sharing ----------
+
+FeedLevel = Query("high_risk", pattern="^(suspicious|high_risk|confirmed_malicious)$",
+                  description="Lowest class to include")
+
+
+@router.get("/feeds/stix", dependencies=[Depends(_limit("feed_limiter"))],
+            responses={200: {"description": "STIX 2.1 bundle of indicator objects", "content": {"application/json": {}}}})
+async def feed_stix(st: St, db: Db, level: str = FeedLevel) -> JSONResponse:
+    items = await feed.collect(db, st.deps.brands or get_index(), level=level)
+    return JSONResponse(feed.stix_bundle(items), media_type="application/stix+json;version=2.1")
+
+
+@router.get("/feeds/blocklist.txt", response_class=PlainTextResponse, dependencies=[Depends(_limit("feed_limiter"))])
+async def feed_blocklist(st: St, db: Db, level: str = FeedLevel) -> PlainTextResponse:
+    items = await feed.collect(db, st.deps.brands or get_index(), level=level)
+    return PlainTextResponse(feed.blocklist(items))
+
+
+# ---------- organisation dashboard ----------
+
+async def _org_or_404(db: AsyncSession, org_id: str) -> OrgRow:
+    o = await db.get(OrgRow, org_id) if re.fullmatch(r"[0-9a-f]{24}", org_id) else None
+    if o is None:
+        raise HTTPException(404, "No organisation with this ID.")
+    return o
+
+
+@router.post("/orgs", response_model=OrgDashboard, dependencies=[Depends(_limit("register_limiter"))])
+async def create_org(req: OrgRequest, st: St, db: Db) -> OrgDashboard:
+    try:
+        domains = orgs.normalize_domains(req.domains)
+    except orgs.OrgError as e:
+        raise HTTPException(422, str(e)) from None
+    if await watch.count(st.db) + len(domains) > watch.MAX_WATCHES:
+        raise HTTPException(429, "The certificate watchlist on this server is full.")
+    now = utcnow()
+    watch_ids = {d: watch.new_token() for d in domains}
+    for d, wid in watch_ids.items():
+        db.add(WatchRow(watch_id=wid, domain=d, created_at=now, known_certs=[], known_issuers=[]))
+    oid = orgs.new_token()
+    db.add(OrgRow(org_id=oid, name=req.name.strip(), domains=domains, watch_ids=watch_ids, created_at=now))
+    await db.commit()
+    for wid in watch_ids.values():  # baseline: today's certificates are not alerts
+        try:
+            await watch.poll_one(st.db, st.api, wid)
+        except watch.ApiUnavailable:
+            break  # the background poll takes the remaining baselines
+    db.expire_all()
+    return await orgs.dashboard(db, st.deps.brands or get_index(), await _org_or_404(db, oid))
+
+
+@router.get("/orgs/{org_id}", response_model=OrgDashboard)
+async def get_org(org_id: str, st: St, db: Db) -> OrgDashboard:
+    return await orgs.dashboard(db, st.deps.brands or get_index(), await _org_or_404(db, org_id))
+
+
+@router.post("/orgs/{org_id}/scan", response_model=OrgDashboard, dependencies=[Depends(_limit("assess_limiter"))])
+async def scan_org(org_id: str, st: St, db: Db) -> OrgDashboard:
+    """Assess every domain's home page again (the normal passive assessment) and return the refreshed dashboard."""
+    o = await _org_or_404(db, org_id)
+    wait = orgs.scan_wait(o)
+    if wait is not None:
+        raise HTTPException(429, f"This organisation was scanned recently. Try again in {wait} s.",
+                            headers={"Retry-After": str(wait)})
+    o.last_scan = utcnow()
+    await db.commit()
+
+    async def one(domain: str) -> None:
+        async with st.db.session() as s:
+            await _assess_and_store(st, s, f"https://{domain}/")
+
+    await asyncio.gather(*(one(d) for d in o.domains), return_exceptions=True)
+    db.expire_all()
+    return await orgs.dashboard(db, st.deps.brands or get_index(), await _org_or_404(db, org_id))
 
 
 @router.get("/health")

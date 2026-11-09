@@ -285,6 +285,34 @@
         "title": "Body_assess_qr",
         "type": "object"
       },
+      "Body_assess_screenshot": {
+        "properties": {
+          "consent": {
+            "default": false,
+            "description": "The user agreed the image goes to the AI provider",
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG/JPEG/WebP screenshot of the page",
+            "title": "File",
+            "type": "string"
+          },
+          "url": {
+            "description": "Address the page was shown at",
+            "maxLength": 2048,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "url"
+        ],
+        "title": "Body_assess_screenshot",
+        "type": "object"
+      },
       "CertificateSummary": {
         "additionalProperties": false,
         "properties": {
@@ -1006,6 +1034,225 @@
         "title": "Indicator",
         "type": "object"
       },
+      "OrgDashboard": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/OrgDomain"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "last_scan": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "Posture comes from the latest assessment of each domain's home page. CT alerts are new certificates since monitoring started. Impersonation counts reports on this server only.",
+            "title": "Note",
+            "type": "string"
+          },
+          "org_id": {
+            "description": "Keep this: it is the only way to open the dashboard",
+            "title": "Org Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "name",
+          "created_at",
+          "last_scan",
+          "domains",
+          "note"
+        ],
+        "title": "OrgDashboard",
+        "type": "object"
+      },
+      "OrgDomain": {
+        "additionalProperties": false,
+        "properties": {
+          "ct_alerts": {
+            "default": 0,
+            "title": "Ct Alerts",
+            "type": "integer"
+          },
+          "ct_last_checked": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ct Last Checked"
+          },
+          "ct_new_issuer_alerts": {
+            "default": 0,
+            "title": "Ct New Issuer Alerts",
+            "type": "integer"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "impersonation": {
+            "$ref": "#/components/schemas/OrgImpersonation"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgLatestReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "watch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch Id"
+          }
+        },
+        "required": [
+          "domain",
+          "latest",
+          "watch_id",
+          "ct_alerts",
+          "ct_new_issuer_alerts",
+          "ct_last_checked",
+          "impersonation"
+        ],
+        "title": "OrgDomain",
+        "type": "object"
+      },
+      "OrgImpersonation": {
+        "additionalProperties": false,
+        "properties": {
+          "lookalike_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lookalike Domains",
+            "type": "array"
+          },
+          "report_ids": {
+            "description": "Most recent first, at most 5",
+            "items": {
+              "type": "string"
+            },
+            "title": "Report Ids",
+            "type": "array"
+          },
+          "reports": {
+            "description": "Stored reports at suspicious or worse that imitate this domain or its brand",
+            "title": "Reports",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reports",
+          "report_ids",
+          "lookalike_domains"
+        ],
+        "title": "OrgImpersonation",
+        "type": "object"
+      },
+      "OrgLatestReport": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/RiskClass"
+          },
+          "coverage_percent": {
+            "title": "Coverage Percent",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "posture": {
+            "$ref": "#/components/schemas/PostureCount"
+          },
+          "posture_titles": {
+            "description": "Highest-severity posture findings first",
+            "items": {
+              "type": "string"
+            },
+            "title": "Posture Titles",
+            "type": "array"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "classification",
+          "coverage_percent",
+          "created_at",
+          "posture",
+          "posture_titles"
+        ],
+        "title": "OrgLatestReport",
+        "type": "object"
+      },
+      "OrgRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Domains",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "domains"
+        ],
+        "title": "OrgRequest",
+        "type": "object"
+      },
       "OwnershipChallenge": {
         "additionalProperties": false,
         "properties": {
@@ -1117,6 +1364,115 @@
           "challenge"
         ],
         "title": "OwnershipVerifyRequest",
+        "type": "object"
+      },
+      "PostureCount": {
+        "additionalProperties": false,
+        "properties": {
+          "high": {
+            "default": 0,
+            "title": "High",
+            "type": "integer"
+          },
+          "low": {
+            "default": 0,
+            "title": "Low",
+            "type": "integer"
+          },
+          "medium": {
+            "default": 0,
+            "title": "Medium",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "PostureCount",
+        "type": "object"
+      },
+      "QuickCheck": {
+        "additionalProperties": false,
+        "description": "Fast pre-navigation check: URL structure, lookalikes, Safe Browsing, OpenPhish and earlier reports on this\nserver. The page is never fetched and nothing is stored.",
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/RiskClass"
+          },
+          "classification_reason": {
+            "title": "Classification Reason",
+            "type": "string"
+          },
+          "coverage_percent": {
+            "title": "Coverage Percent",
+            "type": "integer"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/QuickFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "note": {
+            "default": "Quick check only: the page was not fetched, so certificate, content and redirect checks did not run. Run a full assessment for evidence.",
+            "title": "Note",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "classification",
+          "classification_reason",
+          "coverage_percent",
+          "findings",
+          "note"
+        ],
+        "title": "QuickCheck",
+        "type": "object"
+      },
+      "QuickCheckRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "QuickCheckRequest",
+        "type": "object"
+      },
+      "QuickFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "title": "Check Id",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check_id",
+          "title",
+          "severity"
+        ],
+        "title": "QuickFinding",
         "type": "object"
       },
       "RedirectHop": {
@@ -1794,6 +2150,45 @@
         "summary": "Assess Qr"
       }
     },
+    "/assess/screenshot": {
+      "post": {
+        "description": "Full assessment of `url` plus PAGE.SCREENSHOT_BRAND_MISMATCH: a vision model reads which brand the screenshot\nshows; code compares it with the page's domain. The image is never stored.",
+        "operationId": "assess_screenshot",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_assess_screenshot"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assess Screenshot"
+      }
+    },
     "/clusters": {
       "get": {
         "operationId": "clusters",
@@ -1816,6 +2211,90 @@
         "summary": "Clusters"
       }
     },
+    "/feeds/blocklist.txt": {
+      "get": {
+        "operationId": "feed_blocklist",
+        "parameters": [
+          {
+            "description": "Lowest class to include",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "default": "high_risk",
+              "description": "Lowest class to include",
+              "pattern": "^(suspicious|high_risk|confirmed_malicious)$",
+              "title": "Level",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feed Blocklist"
+      }
+    },
+    "/feeds/stix": {
+      "get": {
+        "operationId": "feed_stix",
+        "parameters": [
+          {
+            "description": "Lowest class to include",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "default": "high_risk",
+              "description": "Lowest class to include",
+              "pattern": "^(suspicious|high_risk|confirmed_malicious)$",
+              "title": "Level",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "STIX 2.1 bundle of indicator objects"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feed Stix"
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health",
@@ -1836,6 +2315,123 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/orgs": {
+      "post": {
+        "operationId": "create_org",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Org"
+      }
+    },
+    "/orgs/{org_id}": {
+      "get": {
+        "operationId": "get_org",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Org"
+      }
+    },
+    "/orgs/{org_id}/scan": {
+      "post": {
+        "description": "Assess every domain's home page again (the normal passive assessment) and return the refreshed dashboard.",
+        "operationId": "scan_org",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgDashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Org"
       }
     },
     "/ownership/challenge": {
@@ -1912,6 +2508,45 @@
           }
         },
         "summary": "Ownership Verify"
+      }
+    },
+    "/quick-check": {
+      "post": {
+        "description": "Fast check for every page the extension opens. The page is not fetched and nothing is stored or logged.",
+        "operationId": "quick_check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quick Check"
       }
     },
     "/reports/{report_id}": {

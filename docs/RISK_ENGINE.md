@@ -111,6 +111,7 @@ Confidence:
 | PAGE.FORM_ACTION_CROSS_DOMAIN | phishing | high | technical | Sensitive form posts to a different registrable domain (not when both page and action host are allowlisted: SSO) |
 | PAGE.BRAND_MISMATCH | impersonation | medium | technical | Title/og:site_name claims a protected brand; domain not official (no credential form) |
 | PAGE.LLM_CLAIMED_BRAND | impersonation | medium | heuristic | LLM extracted a claimed brand from page text that is **not** in brands.json and the domain doesn't obviously belong to it (PhishLLM-style). If the brand IS in brands.json, the deterministic PAGE.* checks decide instead. |
+| PAGE.SCREENSHOT_BRAND_MISMATCH | impersonation | high | heuristic | A vision model read the brand a user-supplied screenshot presents (logo, heading); code compares it with the page's host. A brands.json brand on a non-official, non-allowlisted host fires (high if the page asks for credentials or payment, else medium). An unknown brand fires only when the page asks for credentials or payment and no word of the brand is in the domain. Heuristic, so it alone never goes past `suspicious`. |
 
 ### TLS
 

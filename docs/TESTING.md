@@ -3,9 +3,9 @@
 ## Automated (offline, no keys needed)
 
 ```bash
-cd backend && uv run pytest -q          # 495 tests, ~9 s; live tests are deselected by default
+cd backend && uv run pytest -q          # 537 tests, ~11 s; live tests are deselected by default
 cd backend && uv run ruff check app tests demo
-cd contracts && forge test -vv          # 61 tests, 100% branch coverage
+cd contracts && forge test -vv          # 70 tests
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
 cd frontend && npx tsc --noEmit && npm run lint
 ```

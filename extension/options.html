@@ -16,9 +16,16 @@
   <input id="api" placeholder="http://localhost:8000">
   <label for="app">Web app address (for report links)</label>
   <input id="app" placeholder="http://localhost:3000">
+  <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400">
+    <input type="checkbox" id="realtime" style="width:auto;margin-top:3px">
+    <span><strong>Real-time protection.</strong> Quick-check every page you open and warn before a high-risk page
+      loads. This sends the address of each page you visit to the API above (nothing is stored there, and the page
+      itself is not fetched). Off by default.</span>
+  </label>
   <button id="save">Save</button>
   <p id="msg"></p>
-  <p>A non-local API address asks for permission to reach that host. Nothing is sent until you check a link.</p>
+  <p>A non-local API address asks for permission to reach that host. With real-time protection off, nothing is sent
+    until you check a link.</p>
   <script type="module" src="options.js"></script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { assess, assessQr } from "@/lib/api";
+import { assess, assessQr, assessScreenshot } from "@/lib/api";
 import { detectSubjectType, SUBJECT_LABEL } from "@/lib/detect";
 import type { OwnershipGrant } from "@/lib/types";
 import { OwnershipPanel } from "@/components/OwnershipPanel";
@@ -16,9 +16,13 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [shot, setShot] = useState<File | null>(null);
+  const [shotConsent, setShotConsent] = useState(false);
 
   const detected = useMemo(() => (qr ? "qr" : detectSubjectType(text)), [qr, text]);
   const showOwns = detected === "url" || detected === "domain";
+  const showShot = detected === "url";
+  const useShot = showShot && shot !== null && shotConsent;
   const canSubmit = !busy && (qr !== null || text.trim().length > 0);
 
   async function submit(e: React.FormEvent) {
@@ -29,6 +33,8 @@ export default function Home() {
     try {
       const { report_id } = qr
         ? await assessQr(qr)
+        : useShot
+        ? await assessScreenshot(text.trim(), shot)
         : await assess({
             input: text,
             subject_type: detected,
@@ -98,6 +104,38 @@ export default function Home() {
           </span>
         </label>
         {owns && showOwns && <OwnershipPanel target={text} grant={grant} onGrant={setGrant} />}
+
+        {showShot && (
+          <fieldset className="rounded-md border border-rule bg-panel p-3 text-sm">
+            <legend className="px-1 font-medium">Optional: screenshot of the page</legend>
+            <p className="text-muted">
+              If you have already seen the page, add a screenshot. An AI model reads which organisation the page
+              shows (logo, heading) and we compare that with the real address. Lookalike pages are caught even
+              when their text gives nothing away.
+            </p>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="Screenshot of the page"
+              className="mt-2 block w-full text-sm"
+              onChange={(e) => setShot(e.target.files?.[0] ?? null)}
+            />
+            {shot && (
+              <label className="mt-2 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={shotConsent}
+                  onChange={(e) => setShotConsent(e.target.checked)}
+                  className="mt-0.5 size-5 shrink-0"
+                />
+                <span>
+                  Send this screenshot to the AI provider. It is not stored, but personal details in it can&apos;t be
+                  masked the way text is, so crop out names, account numbers and balances first.
+                </span>
+              </label>
+            )}
+          </fieldset>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <button

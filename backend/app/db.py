@@ -106,6 +106,19 @@ class WatchAlertRow(Base):
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class OrgRow(Base):
+    """An organisation dashboard (app/org.py). The id is a random token: whoever has it can open the dashboard."""
+
+    __tablename__ = "orgs"
+
+    org_id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    domains: Mapped[list] = mapped_column(JSON)  # registrable domains
+    watch_ids: Mapped[dict] = mapped_column(JSON)  # domain -> CT watch id
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_scan: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class IntelCacheRow(Base):
     """Threat-intel response cache. The key is a SHA-256 of the lookup, so URLs aren't duplicated here."""
 

@@ -1,4 +1,4 @@
-import { checkLink, LABELS } from "./common.js";
+import { checkLink, checkable, DANGER, LABELS, quickCheck, settings } from "./common.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "cm-check-link", title: "Check link with CyberMatrix", contexts: ["link"] });
@@ -27,3 +27,57 @@ chrome.notifications.onClicked.addListener(async (id) => {
 function notify(id, title, message) {
   chrome.notifications.create(id, { type: "basic", iconUrl: "icon.png", title, message: message.slice(0, 300) });
 }
+
+// ---------- real-time protection (off unless enabled in Settings) ----------
+// Every top-level navigation gets a quick check: URL structure, lookalikes, Safe Browsing, OpenPhish and earlier
+// CyberMatrix reports. The page itself is never fetched by the server and nothing is stored. A high-risk page is
+// replaced by a warning; a suspicious one gets an amber badge.
+
+const ALLOWED = "cm:allowed"; // origins the user chose to open anyway, this browser session only
+
+async function allowed(url) {
+  const list = (await chrome.storage.session.get(ALLOWED))[ALLOWED] ?? [];
+  return list.includes(new URL(url).origin);
+}
+
+function ownOrigin(url, s) {
+  const o = new URL(url).origin;
+  return o === new URL(s.api).origin || o === new URL(s.app).origin;
+}
+
+chrome.webNavigation.onBeforeNavigate.addListener(async ({ tabId, frameId, url }) => {
+  if (frameId !== 0 || !checkable(url)) return;
+  const s = await settings();
+  if (!s.realtime || ownOrigin(url, s) || (await allowed(url))) return;
+  let q;
+  try {
+    q = await quickCheck(url);
+  } catch {
+    chrome.action.setBadgeText({ tabId, text: "?" });
+    chrome.action.setTitle({ tabId, title: "CyberMatrix couldn't check this page (server unreachable)" });
+    return;
+  }
+  if (DANGER.has(q.classification)) {
+    await chrome.storage.session.set({ [`cm:warn:${tabId}`]: { url, q } });
+    chrome.tabs.update(tabId, { url: chrome.runtime.getURL(`warning.html?tab=${tabId}`) });
+    return;
+  }
+  const [label, color] = LABELS[q.classification] ?? [q.classification, "#5b6672"];
+  const flag = q.classification === "suspicious";
+  chrome.action.setBadgeBackgroundColor({ tabId, color });
+  chrome.action.setBadgeText({ tabId, text: flag ? "!" : "" });
+  chrome.action.setTitle({ tabId, title: `CyberMatrix quick check: ${label}. ${q.classification_reason}` });
+});
+
+chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  if (msg?.type === "cm-allow" && checkable(msg.url)) {
+    chrome.storage.session.get(ALLOWED).then(async (got) => {
+      const list = new Set(got[ALLOWED] ?? []);
+      list.add(new URL(msg.url).origin);
+      await chrome.storage.session.set({ [ALLOWED]: [...list] });
+      reply({ ok: true });
+    });
+    return true; // async reply
+  }
+  return false;
+});

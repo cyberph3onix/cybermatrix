@@ -31,7 +31,8 @@ _TOKENS = [
 ]
 # brand-claim evidence keys in findings: some checks store the brand id, others the display name
 BRAND_FINDINGS = ("MSG.AUTHORITY_IMPERSONATION", "MSG.SENDER_DOMAIN_MISMATCH", "URL.LOOKALIKE.HOMOGLYPH",
-                  "URL.LOOKALIKE.TYPOSQUAT", "URL.BRAND_IN_SUBDOMAIN", "PAGE.CREDENTIAL_FORM", "PAGE.BRAND_MISMATCH")
+                  "URL.LOOKALIKE.TYPOSQUAT", "URL.BRAND_IN_SUBDOMAIN", "PAGE.CREDENTIAL_FORM", "PAGE.BRAND_MISMATCH",
+                  "PAGE.SCREENSHOT_BRAND_MISMATCH")
 
 
 def template(text: str) -> str:

@@ -38,6 +38,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assess/screenshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Assess Screenshot
+         * @description Full assessment of `url` plus PAGE.SCREENSHOT_BRAND_MISMATCH: a vision model reads which brand the screenshot
+         *     shows; code compares it with the page's domain. The image is never stored.
+         */
+        post: operations["assess_screenshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clusters": {
         parameters: {
             query?: never;
@@ -47,6 +68,40 @@ export interface paths {
         };
         /** Clusters */
         get: operations["clusters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/blocklist.txt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feed Blocklist */
+        get: operations["feed_blocklist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/stix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feed Stix */
+        get: operations["feed_stix"];
         put?: never;
         post?: never;
         delete?: never;
@@ -66,6 +121,60 @@ export interface paths {
         get: operations["health"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Org */
+        post: operations["create_org"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{org_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Org */
+        get: operations["get_org"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orgs/{org_id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Org
+         * @description Assess every domain's home page again (the normal passive assessment) and return the refreshed dashboard.
+         */
+        post: operations["scan_org"];
         delete?: never;
         options?: never;
         head?: never;
@@ -100,6 +209,26 @@ export interface paths {
         put?: never;
         /** Ownership Verify */
         post: operations["ownership_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quick-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quick Check
+         * @description Fast check for every page the extension opens. The page is not fetched and nothing is stored or logged.
+         */
+        post: operations["quick_check"];
         delete?: never;
         options?: never;
         head?: never;
@@ -431,6 +560,25 @@ export interface components {
              */
             file: string;
         };
+        /** Body_assess_screenshot */
+        Body_assess_screenshot: {
+            /**
+             * Consent
+             * @description The user agreed the image goes to the AI provider
+             * @default false
+             */
+            consent: boolean;
+            /**
+             * File
+             * @description PNG/JPEG/WebP screenshot of the page
+             */
+            file: string;
+            /**
+             * Url
+             * @description Address the page was shown at
+             */
+            url: string;
+        };
         /** CertificateSummary */
         CertificateSummary: {
             /** Chain Issuers */
@@ -728,6 +876,92 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** OrgDashboard */
+        OrgDashboard: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Domains */
+            domains: components["schemas"]["OrgDomain"][];
+            /** Last Scan */
+            last_scan: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Note
+             * @default Posture comes from the latest assessment of each domain's home page. CT alerts are new certificates since monitoring started. Impersonation counts reports on this server only.
+             */
+            note: string;
+            /**
+             * Org Id
+             * @description Keep this: it is the only way to open the dashboard
+             */
+            org_id: string;
+        };
+        /** OrgDomain */
+        OrgDomain: {
+            /**
+             * Ct Alerts
+             * @default 0
+             */
+            ct_alerts: number;
+            /** Ct Last Checked */
+            ct_last_checked: string | null;
+            /**
+             * Ct New Issuer Alerts
+             * @default 0
+             */
+            ct_new_issuer_alerts: number;
+            /** Domain */
+            domain: string;
+            impersonation: components["schemas"]["OrgImpersonation"];
+            latest: components["schemas"]["OrgLatestReport"] | null;
+            /** Watch Id */
+            watch_id: string | null;
+        };
+        /** OrgImpersonation */
+        OrgImpersonation: {
+            /** Lookalike Domains */
+            lookalike_domains: string[];
+            /**
+             * Report Ids
+             * @description Most recent first, at most 5
+             */
+            report_ids: string[];
+            /**
+             * Reports
+             * @description Stored reports at suspicious or worse that imitate this domain or its brand
+             */
+            reports: number;
+        };
+        /** OrgLatestReport */
+        OrgLatestReport: {
+            classification: components["schemas"]["RiskClass"];
+            /** Coverage Percent */
+            coverage_percent: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            posture: components["schemas"]["PostureCount"];
+            /**
+             * Posture Titles
+             * @description Highest-severity posture findings first
+             */
+            posture_titles: string[];
+            /** Report Id */
+            report_id: string;
+        };
+        /** OrgRequest */
+        OrgRequest: {
+            /** Domains */
+            domains: string[];
+            /** Name */
+            name: string;
+        };
         /** OwnershipChallenge */
         OwnershipChallenge: {
             /** Challenge */
@@ -780,6 +1014,58 @@ export interface components {
         OwnershipVerifyRequest: {
             /** Challenge */
             challenge: string;
+        };
+        /** PostureCount */
+        PostureCount: {
+            /**
+             * High
+             * @default 0
+             */
+            high: number;
+            /**
+             * Low
+             * @default 0
+             */
+            low: number;
+            /**
+             * Medium
+             * @default 0
+             */
+            medium: number;
+        };
+        /**
+         * QuickCheck
+         * @description Fast pre-navigation check: URL structure, lookalikes, Safe Browsing, OpenPhish and earlier reports on this
+         *     server. The page is never fetched and nothing is stored.
+         */
+        QuickCheck: {
+            classification: components["schemas"]["RiskClass"];
+            /** Classification Reason */
+            classification_reason: string;
+            /** Coverage Percent */
+            coverage_percent: number;
+            /** Findings */
+            findings: components["schemas"]["QuickFinding"][];
+            /**
+             * Note
+             * @default Quick check only: the page was not fetched, so certificate, content and redirect checks did not run. Run a full assessment for evidence.
+             */
+            note: string;
+            /** Url */
+            url: string;
+        };
+        /** QuickCheckRequest */
+        QuickCheckRequest: {
+            /** Url */
+            url: string;
+        };
+        /** QuickFinding */
+        QuickFinding: {
+            /** Check Id */
+            check_id: string;
+            severity: components["schemas"]["Severity"];
+            /** Title */
+            title: string;
         };
         /** RedirectHop */
         RedirectHop: {
@@ -1072,6 +1358,39 @@ export interface operations {
             };
         };
     };
+    assess_screenshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_assess_screenshot"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     clusters: {
         parameters: {
             query?: never;
@@ -1088,6 +1407,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Cluster"][];
+                };
+            };
+        };
+    };
+    feed_blocklist: {
+        parameters: {
+            query?: {
+                /** @description Lowest class to include */
+                level?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feed_stix: {
+        parameters: {
+            query?: {
+                /** @description Lowest class to include */
+                level?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description STIX 2.1 bundle of indicator objects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1110,6 +1493,101 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    create_org: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_org: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scan_org: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgDashboard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1167,6 +1645,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnershipGrant"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quick_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickCheck"];
                 };
             };
             /** @description Validation Error */

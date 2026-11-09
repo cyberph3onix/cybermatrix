@@ -9,6 +9,7 @@ import type {
   Cluster,
   DisputePrepared,
   ImpersonationTrend,
+  OrgDashboard,
   OwnershipChallenge,
   OwnershipGrant,
   RegistryRecord,
@@ -159,4 +160,33 @@ export async function createWatch(domain: string): Promise<Watch> {
 
 export async function getWatch(id: string): Promise<Watch> {
   return request(`/watch/${encodeURIComponent(id)}`);
+}
+
+/** Full assessment of `url` plus a vision check of what brand the screenshot shows. The image is not stored. */
+export async function assessScreenshot(url: string, file: File): Promise<AssessResponse> {
+  if (!file.type.startsWith("image/")) throw new ApiError("Upload a PNG, JPEG or WebP screenshot.");
+  const form = new FormData();
+  form.append("file", file);
+  form.append("url", url);
+  form.append("consent", "true");
+  return request("/assess/screenshot", { method: "POST", body: form }, ASSESS_TIMEOUT_MS);
+}
+
+/** Create an organisation dashboard (starts a CT watch per domain). Keep the returned org_id. */
+export async function createOrg(name: string, domains: string[]): Promise<OrgDashboard> {
+  return request("/orgs", json("POST", { name, domains }), 120_000);
+}
+
+export async function getOrg(id: string): Promise<OrgDashboard> {
+  return request(`/orgs/${encodeURIComponent(id)}`);
+}
+
+/** Re-assess every domain's home page (passive) and return the refreshed dashboard. */
+export async function scanOrg(id: string): Promise<OrgDashboard> {
+  return request(`/orgs/${encodeURIComponent(id)}/scan`, json("POST"), 180_000);
+}
+
+/** Download URLs for the threat-intel feed (STIX 2.1 and plain blocklist). */
+export function feedUrls(level: "suspicious" | "high_risk" | "confirmed_malicious" = "high_risk") {
+  return { stix: `${BASE}/feeds/stix?level=${level}`, blocklist: `${BASE}/feeds/blocklist.txt?level=${level}` };
 }

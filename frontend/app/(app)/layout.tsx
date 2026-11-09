@@ -5,6 +5,7 @@ const NAV = [
   { href: "/verify", label: "Verify" },
   { href: "/clusters", label: "Clusters" },
   { href: "/watch", label: "CT watch" },
+  { href: "/org", label: "Organisation" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

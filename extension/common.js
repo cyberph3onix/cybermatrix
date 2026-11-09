@@ -1,5 +1,5 @@
 // Shared by the popup and the service worker. Talks only to the CyberMatrix API you configure (default: local).
-export const DEFAULTS = { api: "http://localhost:8000", app: "http://localhost:3000" };
+export const DEFAULTS = { api: "http://localhost:8000", app: "http://localhost:3000", realtime: false };
 
 export const LABELS = {
   low_risk: ["Low risk", "#1b6b73"],
@@ -11,7 +11,7 @@ export const LABELS = {
 
 export async function settings() {
   const s = await chrome.storage.sync.get(DEFAULTS);
-  return { api: s.api.replace(/\/$/, ""), app: s.app.replace(/\/$/, "") };
+  return { api: s.api.replace(/\/$/, ""), app: s.app.replace(/\/$/, ""), realtime: !!s.realtime };
 }
 
 export function checkable(url) {
@@ -47,3 +47,45 @@ export async function checkLink(url) {
     reportUrl: `${app}/report/${report_id}`,
   };
 }
+
+async function errorOf(res) {
+  let detail = `HTTP ${res.status}`;
+  try { detail = (await res.json()).detail ?? detail; } catch { /* not JSON */ }
+  return new Error(typeof detail === "string" ? detail : `HTTP ${res.status}`);
+}
+
+/** POST /quick-check: no page fetch, nothing stored. Returns {classification, classification_reason, findings, ...}. */
+export async function quickCheck(url) {
+  const { api } = await settings();
+  const res = await fetch(`${api}/quick-check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw await errorOf(res);
+  return res.json();
+}
+
+/** Full assessment plus the screenshot check. `dataUrl` comes from chrome.tabs.captureVisibleTab. */
+export async function checkWithScreenshot(url, dataUrl) {
+  const { api, app } = await settings();
+  const blob = await (await fetch(dataUrl)).blob();
+  const form = new FormData();
+  form.append("file", blob, "screenshot.jpg");
+  form.append("url", url);
+  form.append("consent", "true");
+  const res = await fetch(`${api}/assess/screenshot`, { method: "POST", body: form });
+  if (!res.ok) throw await errorOf(res);
+  const { report_id } = await res.json();
+  const report = await (await fetch(`${api}/reports/${report_id}`)).json();
+  return {
+    reportId: report_id,
+    classification: report.classification,
+    reason: report.classification_reason,
+    coverage: report.coverage?.percent,
+    reportUrl: `${app}/report/${report_id}`,
+  };
+}
+
+export const DANGER = new Set(["high_risk", "confirmed_malicious"]);

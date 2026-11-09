@@ -1,4 +1,4 @@
-import { checkable, checkLink, LABELS } from "./common.js";
+import { checkable, checkLink, checkWithScreenshot, LABELS } from "./common.js";
 
 const $ = (id) => document.getElementById(id);
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -14,7 +14,9 @@ $("go").addEventListener("click", async () => {
   $("go").textContent = "Checking… (up to a minute)";
   $("out").replaceChildren();
   try {
-    const r = await checkLink(url);
+    const r = $("shot").checked
+      ? await checkWithScreenshot(url, await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 80 }))
+      : await checkLink(url);
     const [label, color] = LABELS[r.classification] ?? [r.classification, "#5b6672"];
     const box = document.createElement("div");
     box.className = "result";

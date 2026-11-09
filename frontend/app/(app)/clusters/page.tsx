@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getClusters, getImpersonationTrends } from "@/lib/api";
+import { feedUrls, getClusters, getImpersonationTrends } from "@/lib/api";
 import { CLASS_STYLE } from "@/lib/classes";
 import type { Cluster, ImpersonationTrend } from "@/lib/types";
 
@@ -39,6 +39,33 @@ export default function ClustersPage() {
         Reports that share infrastructure or contact details are grouped here. A shared indicator
         suggests a common operator, but it is a lead, not proof.
       </p>
+
+      <section aria-labelledby="feed" className="mt-6 rounded-md border border-rule bg-panel p-4">
+        <h2 id="feed" className="font-semibold">
+          Share these indicators
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Links and domains from high-risk reports, ready for a firewall, mail filter or SIEM. Query strings are
+          removed, redirect hops and well-known sites are never listed, and reports a validator rejected on-chain
+          are left out.
+        </p>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <a className="text-accent underline" href={feedUrls().stix} target="_blank" rel="noopener noreferrer">
+            STIX 2.1 bundle
+          </a>
+          <a className="text-accent underline" href={feedUrls().blocklist} target="_blank" rel="noopener noreferrer">
+            Plain-text blocklist
+          </a>
+          <a
+            className="text-accent underline"
+            href={feedUrls("suspicious").stix}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Include suspicious (STIX)
+          </a>
+        </p>
+      </section>
 
       {trends.length > 0 && (
         <section aria-labelledby="trends" className="mt-8">
