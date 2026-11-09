@@ -41,5 +41,12 @@
       "deployBlock": 12098985,
       "note": "Deployed by mistake from an out-of-date checkout (v1 plus the reporter role, no dispute bond). Never used by the backend; ignore it."
     }
-  ]
+  ],
+  "disputeDemo": {
+    "onchainId": 2,
+    "disputeTx": "0x2ac133a3678fd312b7d48de477e411346afa92f12c2bb0c763df5edafad0cd8a",
+    "setStatusTx": "0x98b5683ff793987e27041be7502791d3abb8e9cf5f6e21ebc335939e3752c7d8",
+    "status": "validated",
+    "note": "Disputed and resolved by the deployer/validator key to exercise the flow; bond credited to the owner."
+  }
 }

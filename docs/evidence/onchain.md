@@ -24,3 +24,16 @@ Block timestamp is the only time. No URL, message, email or other text.
 `setStatus` input is 68 bytes: selector `0xd896dd64` = `setStatus(uint256,uint8)`, id `1`, status `2` (Validated).
 
 Commands: `cast tx <hash> input`, `cast calldata-decode`, `cast receipt <hash> logs` against `$SEPOLIA_RPC_URL`.
+
+## Dispute and resolution (D-5, sent 2026-11-10)
+
+On-chain report #2 (hash `0xcfbb58c1…9463`, submitted by the relayer). Both transactions sent from the deployer
+`0xaf66…105C`, which is also the only validator, so the disputer and the resolver are the same key in this demo.
+
+| Step | Tx | Block | Result |
+|---|---|---|---|
+| `disputeReport(2, reasonHash)` with 0.001 ETH bond | `0x2ac133a3678fd312b7d48de477e411346afa92f12c2bb0c763df5edafad0cd8a` | 12100020 | status 1; report #2 → Disputed |
+| `setStatus(2, Validated)` | `0x98b5683ff793987e27041be7502791d3abb8e9cf5f6e21ebc335939e3752c7d8` | 12100022 | status 1; report #2 → Validated; bond credited to the owner (`pendingWithdrawal` = 1e15 wei, not withdrawn) |
+
+reasonHash = keccak256 of the text "Audit demo 2026-11-10: dispute raised to exercise the bonded dispute and validator
+resolution flow." = `0x81dc34f07173701427eb3a33fdd04d1e95170aa295f94fe75ddacb6266bf8006`.
