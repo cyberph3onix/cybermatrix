@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getRegistration, registerReport } from "@/lib/api";
 import type { RegistryRecord } from "@/lib/types";
+import { RegistryHistory } from "./RegistryHistory";
 
 export function RegisterButton({ reportId }: { reportId: string }) {
   const [rec, setRec] = useState<RegistryRecord | null>(null);
@@ -54,6 +55,7 @@ export function RegisterButton({ reportId }: { reportId: string }) {
               Verify this report
             </Link>
           </p>
+          <RegistryHistory reportId={reportId} refreshKey={rec.onchain_id ?? 0} />
         </div>
       ) : (
         <button

@@ -44,7 +44,8 @@ verify/verify.py  standalone: report.json + RPC + address → MATCH / MISMATCH (
 ```
 backend/app/
   main.py, api/                 routes: POST /assess, GET /reports/{id}, POST /reports/{id}/register,
-                                GET /reports/{id}/verify, GET /clusters, POST /assess/qr
+                                GET /reports/{id}/verify, GET /clusters, POST /assess/qr,
+                                GET /reports/{id}/history, POST /reports/{id}/dispute-reason, POST /reports/{id}/reassess
   schemas.py                    THE data contract — do not change shape without updating frontend types
   fetch/safe_fetch.py, fetch/api_client.py
   checks/url_structure.py, lookalike.py, redirects.py, page.py, domain_rdap.py,
@@ -90,10 +91,13 @@ Check IDs and severities live in `docs/RISK_ENGINE.md`. That table is the single
 - `struct Report { bytes32 reportHash; bytes32 parentHash; address reporter; uint64 createdAt; Status status; }`
 - `submitReport(bytes32 reportHash, bytes32 parentHash) returns (uint256 id)`. Reverts on duplicate hash.
   If parentHash ≠ 0, the parent must exist and be owned by the sender; the parent becomes Superseded.
-- `disputeReport(uint256 id, bytes32 reasonHash)`: anyone; Submitted/Validated → Disputed.
-- `setStatus(uint256 id, Status s)`: validator role only (Validated / Rejected).
+- `disputeReport(uint256 id, bytes32 reasonHash) payable`: anyone, with exactly `disputeBond` wei; Submitted/Validated → Disputed.
+  Sent from the user's own wallet (frontend `lib/wallet.ts`); the backend only stores the redacted reason text.
+- `setStatus(uint256 id, Status s)`: validator role only (Validated / Rejected). Resolving a dispute credits the bond:
+  Rejected → disputer, Validated → owner. Superseding a disputed report credits the disputer. `withdraw()` pays out
+  (the only external call; checks-effects-interactions). `setDisputeBond` is owner-only.
 - `getReport(id)`, `idOfHash(bytes32)`. Events for every state change.
-- Owner manages validators. Solidity ^0.8.24, no upgradability, no external calls. Foundry tests for every
+- Owner manages validators. Solidity ^0.8.24, no upgradability, no external calls except `withdraw`. Foundry tests for every
   revert path. Deploy to Sepolia and verify the source on Etherscan.
 
 ## Report hashing (must match verify.py exactly)

@@ -89,6 +89,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/{report_id}/dispute-reason": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dispute Reason
+         * @description Store the (redacted) reason off-chain and return what the user's wallet needs to send the bonded dispute.
+         *     The server never sends the dispute itself: the bond must come from the person disputing.
+         */
+        post: operations["dispute_reason"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{report_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{report_id}/reassess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reassess
+         * @description Assess the same link again and register the result as a revision (parentHash = this report's hash).
+         *     The old version becomes Superseded on-chain; both stay verifiable.
+         */
+        post: operations["reassess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{report_id}/register": {
         parameters: {
             query?: never;
@@ -416,6 +475,55 @@ export interface components {
             /** Unavailable */
             unavailable: string[];
         };
+        /** DisputeInfo */
+        DisputeInfo: {
+            /** Bond Wei */
+            bond_wei: number;
+            /**
+             * Disputer
+             * @description Address that posted the bond
+             */
+            disputer: string;
+            /**
+             * Reason
+             * @description Redacted reason text, kept off-chain
+             */
+            reason: string | null;
+            /**
+             * Reason Hash
+             * @description keccak256 of the reason text, if this server stored it
+             */
+            reason_hash: string | null;
+        };
+        /**
+         * DisputePrepared
+         * @description What a wallet needs to call disputeReport(onchain_id, reason_hash) with value = bond_wei.
+         */
+        DisputePrepared: {
+            /** Bond Wei */
+            bond_wei: number;
+            /**
+             * Calldata
+             * @description ABI-encoded disputeReport call, ready for eth_sendTransaction
+             */
+            calldata: string;
+            /** Chain Id */
+            chain_id: number;
+            /** Contract Address */
+            contract_address: string;
+            /** Onchain Id */
+            onchain_id: number;
+            /** Reason Hash */
+            reason_hash: string;
+        };
+        /** DisputeReasonRequest */
+        DisputeReasonRequest: {
+            /**
+             * Reason
+             * @description Why this report is wrong. Personal details are masked.
+             */
+            reason: string;
+        };
         /** Evidence */
         Evidence: {
             /**
@@ -542,6 +650,65 @@ export interface components {
          * @enum {string}
          */
         RegistryStatus: "submitted" | "disputed" | "validated" | "rejected" | "superseded";
+        /** ReportHistory */
+        ReportHistory: {
+            /**
+             * Can Dispute
+             * @default false
+             */
+            can_dispute: boolean;
+            /**
+             * Can Reassess
+             * @default false
+             */
+            can_reassess: boolean;
+            /** Chain Id */
+            chain_id: number | null;
+            /** Contract Address */
+            contract_address: string | null;
+            /**
+             * Dispute Bond Wei
+             * @description Bond required to dispute, read from the contract
+             */
+            dispute_bond_wei: number | null;
+            /**
+             * Note
+             * @default Statuses are read from the contract. Disputes are sent from your own wallet with a bond, which is returned if a validator agrees with you and kept if not. The reason text stays off-chain; only its hash is recorded.
+             */
+            note: string;
+            open_dispute: components["schemas"]["DisputeInfo"] | null;
+            /** Registered */
+            registered: boolean;
+            /** Report Id */
+            report_id: string;
+            /**
+             * Versions
+             * @description Oldest first, following parentHash links
+             */
+            versions: components["schemas"]["ReportVersion"][];
+        };
+        /** ReportVersion */
+        ReportVersion: {
+            /** Explorer Url */
+            explorer_url: string | null;
+            /**
+             * Is Current
+             * @description The version whose history was requested
+             */
+            is_current: boolean;
+            /** Onchain Id */
+            onchain_id: number | null;
+            /** Report Hash */
+            report_hash: string;
+            /**
+             * Report Id
+             * @description None if this server does not hold that version
+             */
+            report_id: string | null;
+            status: components["schemas"]["RegistryStatus"];
+            /** Tx Hash */
+            tx_hash: string | null;
+        };
         /**
          * RiskClass
          * @enum {string}
@@ -736,6 +903,103 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dispute_reason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisputeReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputePrepared"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportHistory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reassess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

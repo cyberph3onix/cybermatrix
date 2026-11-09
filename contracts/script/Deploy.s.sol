@@ -12,12 +12,17 @@ contract Deploy is Script {
         uint256 pk = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(pk);
 
+        // A dispute posts this bond (wei); returned if the validator upholds it, forfeited if not.
+        uint96 bond = uint96(vm.envOr("DISPUTE_BOND_WEI", uint256(0.001 ether)));
+
         vm.startBroadcast(pk);
         registry = new ThreatRegistry();
         registry.addValidator(deployer);
+        registry.setDisputeBond(bond);
         vm.stopBroadcast();
 
         console2.log("ThreatRegistry deployed at", address(registry));
         console2.log("owner + validator", deployer);
+        console2.log("dispute bond (wei)", uint256(bond));
     }
 }

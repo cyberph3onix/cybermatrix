@@ -56,6 +56,17 @@ class RegistryRow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class DisputeReasonRow(Base):
+    """Off-chain text of a dispute reason; only its keccak256 goes on-chain."""
+
+    __tablename__ = "dispute_reasons"
+
+    reason_hash: Mapped[str] = mapped_column(String(66), primary_key=True)
+    report_id: Mapped[str] = mapped_column(ForeignKey("reports.report_id", ondelete="CASCADE"), index=True)
+    text: Mapped[str] = mapped_column(String(4000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class IntelCacheRow(Base):
     """Threat-intel response cache. The key is a SHA-256 of the lookup, so URLs aren't duplicated here."""
 

@@ -5,7 +5,7 @@
 ```bash
 cd backend && uv run pytest -q          # 463 tests, ~7 s; live tests are deselected by default
 cd backend && uv run ruff check app tests demo
-cd contracts && forge test -vv          # 46 tests, 100% branch coverage
+cd contracts && forge test -vv          # 61 tests, 100% branch coverage
 uv run --no-project --with-requirements verify/requirements.txt --with pytest pytest verify/tests -q
 cd frontend && npx tsc --noEmit && npm run lint
 ```
@@ -148,3 +148,6 @@ Checked so far (Chrome, iframes at 320, 360, 375 and 412 px, on all 8 page types
 - `/verify`: look up a report ID, upload `sample_report.json` (MATCH), upload an edited copy (MISMATCH).
 - A report page at 390 px wide: no horizontal scroll, evidence expands, limitations visible.
 - `/clusters`: cluster with an AI-written description labelled as such.
+- A registered link report: "Version history" lists v1. "Re-assess and register a new version" opens v2; v1 now shows
+  Superseded and links forward. "Dispute this report" with MetaMask on Sepolia: the wallet asks for the 0.001 ETH bond,
+  and after mining the report shows Disputed with the (masked) reason.

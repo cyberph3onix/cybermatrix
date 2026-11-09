@@ -486,4 +486,201 @@ contract ThreatRegistryTest is Test {
         vm.prank(b);
         reg.submitReport(h, bytes32(0));
     }
+
+    // ---------- v2: dispute bond ----------
+
+    event DisputeBondChanged(uint256 previous, uint256 current);
+    event DisputeResolved(uint256 indexed id, address indexed disputer, bool upheld, uint256 bond);
+    event Withdrawal(address indexed account, uint256 amount);
+
+    uint96 constant BOND = 0.001 ether;
+
+    function _bonded() internal returns (uint256 id) {
+        reg.setDisputeBond(BOND);
+        id = _submit(H1);
+        vm.deal(stranger, 1 ether);
+        vm.prank(stranger);
+        reg.disputeReport{value: BOND}(id, REASON);
+    }
+
+    function test_SetDisputeBond() public {
+        vm.expectEmit(false, false, false, true);
+        emit DisputeBondChanged(0, BOND);
+        reg.setDisputeBond(BOND);
+        assertEq(reg.disputeBond(), BOND);
+    }
+
+    function test_RevertWhen_SetDisputeBond_NotOwner() public {
+        vm.expectRevert(ThreatRegistry.NotOwner.selector);
+        vm.prank(stranger);
+        reg.setDisputeBond(BOND);
+    }
+
+    function test_Dispute_HoldsBond() public {
+        uint256 id = _bonded();
+        ThreatRegistry.Dispute memory d = reg.getDispute(id);
+        assertEq(d.disputer, stranger);
+        assertEq(d.bond, BOND);
+        assertEq(address(reg).balance, BOND);
+    }
+
+    function test_RevertWhen_Dispute_BondMissing() public {
+        reg.setDisputeBond(BOND);
+        uint256 id = _submit(H1);
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.WrongBond.selector, 0, BOND));
+        vm.prank(stranger);
+        reg.disputeReport(id, REASON);
+    }
+
+    function test_RevertWhen_Dispute_Overpaid() public {
+        reg.setDisputeBond(BOND);
+        uint256 id = _submit(H1);
+        vm.deal(stranger, 1 ether);
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.WrongBond.selector, uint256(BOND) + 1, BOND));
+        vm.prank(stranger);
+        reg.disputeReport{value: uint256(BOND) + 1}(id, REASON);
+    }
+
+    function test_RevertWhen_Dispute_ValueWithZeroBond() public {
+        uint256 id = _submit(H1);
+        vm.deal(stranger, 1 ether);
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.WrongBond.selector, 1, 0));
+        vm.prank(stranger);
+        reg.disputeReport{value: 1}(id, REASON);
+    }
+
+    function test_Resolve_Upheld_RefundsDisputer() public {
+        uint256 id = _bonded();
+        vm.expectEmit(true, true, false, true);
+        emit DisputeResolved(id, stranger, true, BOND);
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Rejected);
+        assertEq(reg.pendingWithdrawal(stranger), BOND);
+        assertEq(reg.getDispute(id).disputer, address(0));
+
+        uint256 before = stranger.balance;
+        vm.expectEmit(true, false, false, true);
+        emit Withdrawal(stranger, BOND);
+        vm.prank(stranger);
+        reg.withdraw();
+        assertEq(stranger.balance, before + BOND);
+        assertEq(reg.pendingWithdrawal(stranger), 0);
+        assertEq(address(reg).balance, 0);
+    }
+
+    function test_Resolve_Failed_ForfeitsToOwner() public {
+        uint256 id = _bonded();
+        vm.expectEmit(true, true, false, true);
+        emit DisputeResolved(id, stranger, false, BOND);
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Validated);
+        assertEq(reg.pendingWithdrawal(owner), BOND);
+        assertEq(reg.pendingWithdrawal(stranger), 0);
+    }
+
+    function test_Validate_WithoutDispute_MovesNoFunds() public {
+        uint256 id = _submit(H1);
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Validated);
+        assertEq(reg.pendingWithdrawal(owner), 0);
+    }
+
+    function test_Supersede_Disputed_RefundsDisputer() public {
+        uint256 id = _bonded();
+        vm.expectEmit(true, true, false, true);
+        emit DisputeResolved(id, stranger, true, BOND);
+        vm.prank(relayer);
+        reg.submitReport(H2, H1);
+        assertEq(uint8(_status(id)), uint8(ThreatRegistry.Status.Superseded));
+        assertEq(reg.pendingWithdrawal(stranger), BOND);
+    }
+
+    function test_Redispute_AfterValidation_CanBeBondedAgain() public {
+        uint256 id = _bonded();
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Validated);
+        vm.prank(stranger);
+        reg.disputeReport{value: BOND}(id, REASON);
+        assertEq(reg.getDispute(id).bond, BOND);
+        assertEq(address(reg).balance, 2 * uint256(BOND));
+    }
+
+    function test_RevertWhen_Withdraw_Nothing() public {
+        vm.expectRevert(ThreatRegistry.NothingToWithdraw.selector);
+        vm.prank(stranger);
+        reg.withdraw();
+    }
+
+    function test_RevertWhen_Withdraw_TransferFails() public {
+        RejectsEther disputer = new RejectsEther(reg);
+        reg.setDisputeBond(BOND);
+        uint256 id = _submit(H1);
+        vm.deal(address(disputer), 1 ether);
+        disputer.dispute{value: BOND}(id, REASON);
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Rejected);
+        vm.expectRevert(ThreatRegistry.TransferFailed.selector);
+        disputer.withdraw();
+        assertEq(reg.pendingWithdrawal(address(disputer)), BOND); // reverted, so the credit is kept
+    }
+
+    function test_Withdraw_ReentrancyGetsNothingExtra() public {
+        Reenterer attacker = new Reenterer(reg);
+        reg.setDisputeBond(BOND);
+        uint256 id = _submit(H1);
+        vm.deal(address(attacker), 1 ether);
+        attacker.dispute{value: BOND}(id, REASON);
+        vm.prank(validator);
+        reg.setStatus(id, ThreatRegistry.Status.Rejected);
+        attacker.withdraw();
+        // the bond came from this test (msg.value), so the attacker holds its 1 ether plus exactly one bond
+        assertEq(address(attacker).balance, 1 ether + uint256(BOND));
+        assertEq(reg.pendingWithdrawal(address(attacker)), 0);
+        assertEq(address(reg).balance, 0);
+    }
+
+    function test_RevertWhen_GetDispute_NotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(ThreatRegistry.ReportNotFound.selector, 9));
+        reg.getDispute(9);
+    }
+}
+
+contract RejectsEther {
+    ThreatRegistry reg;
+
+    constructor(ThreatRegistry r) {
+        reg = r;
+    }
+
+    function dispute(uint256 id, bytes32 reason) external payable {
+        reg.disputeReport{value: msg.value}(id, reason);
+    }
+
+    function withdraw() external {
+        reg.withdraw();
+    }
+}
+
+contract Reenterer {
+    ThreatRegistry reg;
+    bool entered;
+
+    constructor(ThreatRegistry r) {
+        reg = r;
+    }
+
+    function dispute(uint256 id, bytes32 reason) external payable {
+        reg.disputeReport{value: msg.value}(id, reason);
+    }
+
+    function withdraw() external {
+        reg.withdraw();
+    }
+
+    receive() external payable {
+        if (!entered) {
+            entered = true;
+            try reg.withdraw() {} catch {} // balance already zeroed: reverts NothingToWithdraw
+        }
+    }
 }

@@ -26,10 +26,12 @@ Tests for every item are in `backend/tests/test_attacker_review.py`.
 
 1. **Ownership is not verified.** `owns_site` is a checkbox. Anyone can ask us to GET `/.git/HEAD` and `/.env` on a
    third-party site and publish whether they were readable (never the contents). Proper fix: DNS TXT or file-token proof.
-2. **Anyone can dispute any report.** `disputeReport` is open to all addresses, so a `Validated` report can be knocked
-   to `Disputed` for the price of gas until a validator re-validates. This fails in the safe direction for us
-   (`CORR.VALIDATED_MATCH` stops firing) but lets an attacker hide a validated site. Fixing it needs a dispute bond or
-   a reporter allowlist, i.e. a contract change.
+2. **Disputes cost a bond (fixed in v2).** v1 let anyone knock a `Validated` report to `Disputed` for the price of
+   gas. v2 (`0x46509457…BbB4`) requires exactly `disputeBond` (0.001 ETH) per dispute: a validator who rejects the
+   report returns it, one who re-validates keeps it, and a revision by the reporter returns it. Payouts are pull-based
+   (`withdraw`, balance zeroed before the transfer; a reentrancy test covers it). The bond prices abuse but does not
+   stop a well-funded attacker; validators are still trusted. Disputes are sent from the user's wallet, never by the
+   relayer, so the relayer cannot be drained.
 3. **Registry status can lag.** `CORR.VALIDATED_MATCH` uses the status this server last saw; it refreshes when a
    report's registration is viewed, not continuously.
 4. **Single relayer, single owner.** All reports register from one address, so the on-chain reporter does not identify

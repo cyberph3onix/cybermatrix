@@ -640,6 +640,110 @@
         "title": "Coverage",
         "type": "object"
       },
+      "DisputeInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "bond_wei": {
+            "title": "Bond Wei",
+            "type": "integer"
+          },
+          "disputer": {
+            "description": "Address that posted the bond",
+            "title": "Disputer",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Redacted reason text, kept off-chain",
+            "title": "Reason"
+          },
+          "reason_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "keccak256 of the reason text, if this server stored it",
+            "title": "Reason Hash"
+          }
+        },
+        "required": [
+          "disputer",
+          "bond_wei",
+          "reason_hash",
+          "reason"
+        ],
+        "title": "DisputeInfo",
+        "type": "object"
+      },
+      "DisputePrepared": {
+        "additionalProperties": false,
+        "description": "What a wallet needs to call disputeReport(onchain_id, reason_hash) with value = bond_wei.",
+        "properties": {
+          "bond_wei": {
+            "title": "Bond Wei",
+            "type": "integer"
+          },
+          "calldata": {
+            "description": "ABI-encoded disputeReport call, ready for eth_sendTransaction",
+            "title": "Calldata",
+            "type": "string"
+          },
+          "chain_id": {
+            "title": "Chain Id",
+            "type": "integer"
+          },
+          "contract_address": {
+            "title": "Contract Address",
+            "type": "string"
+          },
+          "onchain_id": {
+            "title": "Onchain Id",
+            "type": "integer"
+          },
+          "reason_hash": {
+            "title": "Reason Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason_hash",
+          "onchain_id",
+          "chain_id",
+          "contract_address",
+          "bond_wei",
+          "calldata"
+        ],
+        "title": "DisputePrepared",
+        "type": "object"
+      },
+      "DisputeReasonRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Why this report is wrong. Personal details are masked.",
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DisputeReasonRequest",
+        "type": "object"
+      },
       "Evidence": {
         "additionalProperties": false,
         "properties": {
@@ -953,6 +1057,173 @@
         ],
         "title": "RegistryStatus",
         "type": "string"
+      },
+      "ReportHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "can_dispute": {
+            "default": false,
+            "title": "Can Dispute",
+            "type": "boolean"
+          },
+          "can_reassess": {
+            "default": false,
+            "title": "Can Reassess",
+            "type": "boolean"
+          },
+          "chain_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Id"
+          },
+          "contract_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Address"
+          },
+          "dispute_bond_wei": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bond required to dispute, read from the contract",
+            "title": "Dispute Bond Wei"
+          },
+          "note": {
+            "default": "Statuses are read from the contract. Disputes are sent from your own wallet with a bond, which is returned if a validator agrees with you and kept if not. The reason text stays off-chain; only its hash is recorded.",
+            "title": "Note",
+            "type": "string"
+          },
+          "open_dispute": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisputeInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registered": {
+            "title": "Registered",
+            "type": "boolean"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "versions": {
+            "description": "Oldest first, following parentHash links",
+            "items": {
+              "$ref": "#/components/schemas/ReportVersion"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "report_id",
+          "registered",
+          "chain_id",
+          "contract_address",
+          "dispute_bond_wei",
+          "versions",
+          "open_dispute",
+          "can_reassess",
+          "can_dispute",
+          "note"
+        ],
+        "title": "ReportHistory",
+        "type": "object"
+      },
+      "ReportVersion": {
+        "additionalProperties": false,
+        "properties": {
+          "explorer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explorer Url"
+          },
+          "is_current": {
+            "description": "The version whose history was requested",
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "onchain_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onchain Id"
+          },
+          "report_hash": {
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None if this server does not hold that version",
+            "title": "Report Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RegistryStatus"
+          },
+          "tx_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tx Hash"
+          }
+        },
+        "required": [
+          "report_id",
+          "report_hash",
+          "onchain_id",
+          "status",
+          "tx_hash",
+          "explorer_url",
+          "is_current"
+        ],
+        "title": "ReportVersion",
+        "type": "object"
       },
       "RiskClass": {
         "enum": [
@@ -1286,6 +1557,135 @@
           }
         },
         "summary": "Get Report"
+      }
+    },
+    "/reports/{report_id}/dispute-reason": {
+      "post": {
+        "description": "Store the (redacted) reason off-chain and return what the user's wallet needs to send the bonded dispute.\nThe server never sends the dispute itself: the bond must come from the person disputing.",
+        "operationId": "dispute_reason",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisputeReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisputePrepared"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dispute Reason"
+      }
+    },
+    "/reports/{report_id}/history": {
+      "get": {
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History"
+      }
+    },
+    "/reports/{report_id}/reassess": {
+      "post": {
+        "description": "Assess the same link again and register the result as a revision (parentHash = this report's hash).\nThe old version becomes Superseded on-chain; both stay verifiable.",
+        "operationId": "reassess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reassess"
       }
     },
     "/reports/{report_id}/register": {

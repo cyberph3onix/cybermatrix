@@ -49,7 +49,7 @@ def parse_report(row: ReportRow) -> AssessmentReport:
     return AssessmentReport.model_validate_json(row.canonical)
 
 
-def _record(row: RegistryRow) -> RegistryRecord:
+def record(row: RegistryRow) -> RegistryRecord:
     return RegistryRecord(
         report_id=row.report_id, report_hash=row.report_hash, parent_hash=row.parent_hash, chain_id=row.chain_id,
         contract_address=row.contract_address, onchain_id=row.onchain_id, tx_hash=row.tx_hash,
@@ -58,7 +58,7 @@ def _record(row: RegistryRow) -> RegistryRecord:
 
 async def get_registry(session: AsyncSession, report_id: str) -> RegistryRecord | None:
     row = await session.get(RegistryRow, report_id)
-    return _record(row) if row else None
+    return record(row) if row else None
 
 
 async def save_registry(session: AsyncSession, rec: RegistryRecord) -> None:

@@ -28,6 +28,7 @@ EXPECTED = "0xe8db935c3a232b5389c14869c1d0ace58d0f38c6231d1ecff0fecdceb2ad91d3"
 # anvil dev accounts: 0 = deployer/owner/validator, 1 = relayer (submit only)
 DEPLOYER_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 RELAYER_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+DISPUTER_KEY = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"  # anvil account 2
 
 
 def _tool(name: str) -> str | None:
@@ -77,11 +78,20 @@ def node():
     address = send(factory.constructor().build_transaction({"from": deployer.address}))["contractAddress"]
     reg = w3.eth.contract(address=address, abi=artifact["abi"])
     send(reg.functions.addValidator(deployer.address).build_transaction({"from": deployer.address}))
+    send(reg.functions.setDisputeBond(10**15).build_transaction({"from": deployer.address}))
+    disputer = w3.eth.account.from_key(DISPUTER_KEY)
+
+    def dispute_from_wallet(calldata: str, value: int) -> dict:
+        """What the browser wallet does with /dispute-reason's answer."""
+        tx = {"to": address, "data": calldata, "value": value, "from": disputer.address, "chainId": 31337,
+              "nonce": w3.eth.get_transaction_count(disputer.address), "gas": 200_000, "gasPrice": w3.eth.gas_price}
+        return w3.eth.wait_for_transaction_receipt(w3.eth.send_raw_transaction(disputer.sign_transaction(tx).raw_transaction))
 
     def set_status(onchain_id: int, status: int) -> None:
         send(reg.functions.setStatus(onchain_id, status).build_transaction({"from": deployer.address}))
 
-    yield {"rpc": rpc, "address": address, "set_status": set_status}
+    yield {"rpc": rpc, "address": address, "set_status": set_status, "dispute": dispute_from_wallet,
+           "disputer": disputer.address}
     proc.terminate()
     proc.wait(timeout=5)
 
@@ -187,3 +197,15 @@ async def test_read_only_client_cannot_submit(node) -> None:
         with pytest.raises(ChainError) as e:
             await ro.submit_report(_report(salt="ab" * 31 + "cd"))
     assert e.value.reason == "NotConfigured"
+
+
+@pytest.mark.asyncio
+async def test_bonded_dispute_from_user_wallet(client: ChainClient, node) -> None:
+    rec = await client.submit_report(_report(salt="77" * 32))
+    assert await client.dispute_bond() == 10**15
+    assert await client.get_dispute(rec.onchain_id) is None
+    calldata = client.dispute_calldata(rec.onchain_id, "0x" + "42" * 32)
+    assert node["dispute"](calldata, 0)["status"] == 0  # no bond: WrongBond revert
+    assert node["dispute"](calldata, 10**15)["status"] == 1
+    assert await client.get_dispute(rec.onchain_id) == (node["disputer"], 10**15)
+    assert (await client.get_report(rec.onchain_id)).status == RegistryStatus.DISPUTED

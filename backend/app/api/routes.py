@@ -15,10 +15,11 @@ from app import store
 from app.ai.cluster_summary import add_summaries
 from app.ai.explain import explain
 from app.ai.llm import LlmUnavailable
+from app.ai.redact import redact
 from app.api.state import AppState
 from app.correlation.checks import apply_correlation
 from app.correlation.clusters import build_clusters
-from app.db import RegistryRow
+from app.db import DisputeReasonRow, RegistryRow
 from app.detect import detect_subject
 from app.pipeline import assess_url
 from app.pipeline_message import assess_email, assess_message
@@ -26,15 +27,22 @@ from app.pipeline_upi import UpiError, assess_upi, is_upi
 from app.pipeline_upi import finalize as finalize_upi
 from app.qr import QrError, decode_qr
 from app.ratelimit import client_ip, limit_dependency
-from app.registry.chain import ChainClient, ChainError, ChainUnavailable
+from app.registry.chain import ZERO_HASH, ChainClient, ChainError, ChainUnavailable
 from app.schemas import (
     AssessmentReport,
     AssessRequest,
     AssessResponse,
     Cluster,
+    DisputeInfo,
+    DisputePrepared,
+    DisputeReasonRequest,
     RegistryRecord,
+    RegistryStatus,
+    ReportHistory,
+    ReportVersion,
     SubjectType,
     VerificationResult,
+    utcnow,
 )
 from app.urlutil import URLParseError, parse_url
 
@@ -224,6 +232,133 @@ async def register(report_id: str, st: St, db: Db) -> RegistryRecord:
             raise HTTPException(500, "Internal error: report hash mismatch.")
         await store.save_registry(db, rec)
         return rec
+
+
+# ---------- history, disputes, revisions ----------
+
+MAX_VERSIONS = 20
+REASSESSABLE = {SubjectType.URL.value, SubjectType.DOMAIN.value, SubjectType.QR.value}
+
+
+async def _registry_by(db: AsyncSession, column, value: str) -> RegistryRow | None:
+    q = select(RegistryRow).where(column == value).order_by(RegistryRow.updated_at.desc())
+    return (await db.execute(q)).scalars().first()
+
+
+async def _lineage(db: AsyncSession, row: RegistryRow) -> list[tuple[str | None, str, RegistryRow | None]]:
+    """[(report_id, report_hash, row)] oldest first, following parent_hash back and child links forward."""
+    back: list[tuple[str | None, str, RegistryRow | None]] = []
+    cur = row
+    while cur.parent_hash != ZERO_HASH and len(back) < MAX_VERSIONS:
+        parent = await _registry_by(db, RegistryRow.report_hash, cur.parent_hash)
+        if parent is None:  # registered elsewhere, or by another server: still part of the on-chain lineage
+            back.append((None, cur.parent_hash, None))
+            break
+        back.append((parent.report_id, parent.report_hash, parent))
+        cur = parent
+    out = list(reversed(back)) + [(row.report_id, row.report_hash, row)]
+    cur = row
+    while len(out) < MAX_VERSIONS and (child := await _registry_by(db, RegistryRow.parent_hash, cur.report_hash)):
+        out.append((child.report_id, child.report_hash, child))
+        cur = child
+    return out
+
+
+@router.get("/reports/{report_id}/history", response_model=ReportHistory)
+async def history(report_id: str, st: St, db: Db) -> ReportHistory:
+    row = await _row_or_404(db, report_id)
+    reg = await db.get(RegistryRow, report_id)
+    if reg is None or reg.onchain_id is None:
+        return ReportHistory(report_id=report_id, registered=False)
+    chain = _get_chain(st)
+    try:
+        versions: list[ReportVersion] = []
+        for rid, h, vrow in await _lineage(db, reg):
+            onchain = await chain.find_by_hash(h)
+            status = onchain.status if onchain else RegistryStatus(vrow.status if vrow else "submitted")
+            if vrow is not None and onchain is not None and vrow.status != status.value:
+                await store.save_registry(db, store.record(vrow).model_copy(update={"status": status}))
+            tx = vrow.tx_hash if vrow else None
+            versions.append(ReportVersion(report_id=rid, report_hash=h, onchain_id=onchain.id if onchain else None,
+                                          status=status, tx_hash=tx, explorer_url=await chain.explorer_url(tx) if tx else None,
+                                          is_current=rid == report_id))
+        bond = await chain.dispute_bond()
+        dispute = await chain.get_dispute(reg.onchain_id)
+    except (ChainError, ChainUnavailable) as e:
+        raise _chain_error(e) from None
+    current = next(v for v in versions if v.is_current)
+    info = None
+    if dispute is not None:
+        reason = (await db.execute(select(DisputeReasonRow).where(DisputeReasonRow.report_id == report_id)
+                                   .order_by(DisputeReasonRow.created_at.desc()))).scalars().first()
+        info = DisputeInfo(disputer=dispute[0], bond_wei=dispute[1], reason_hash=reason.reason_hash if reason else None,
+                           reason=reason.text if reason else None)
+    live = current.status in (RegistryStatus.SUBMITTED, RegistryStatus.DISPUTED, RegistryStatus.VALIDATED)
+    return ReportHistory(
+        report_id=report_id, registered=True, chain_id=reg.chain_id, contract_address=reg.contract_address,
+        dispute_bond_wei=bond, versions=versions, open_dispute=info,
+        can_reassess=live and row.subject_type in REASSESSABLE,
+        can_dispute=current.status in (RegistryStatus.SUBMITTED, RegistryStatus.VALIDATED))
+
+
+@router.post("/reports/{report_id}/dispute-reason", response_model=DisputePrepared,
+             dependencies=[Depends(_limit("register_limiter"))])
+async def dispute_reason(report_id: str, req: DisputeReasonRequest, st: St, db: Db) -> DisputePrepared:
+    """Store the (redacted) reason off-chain and return what the user's wallet needs to send the bonded dispute.
+    The server never sends the dispute itself: the bond must come from the person disputing."""
+    await _row_or_404(db, report_id)
+    reg = await db.get(RegistryRow, report_id)
+    if reg is None or reg.onchain_id is None:
+        raise HTTPException(409, "Only reports registered on-chain can be disputed.")
+    chain = _get_chain(st)
+    text = redact(req.reason.strip()).text
+    reason_hash = store.hash_bytes(text.encode())
+    try:
+        onchain = await chain.get_report(reg.onchain_id)
+        if onchain.status not in (RegistryStatus.SUBMITTED, RegistryStatus.VALIDATED):
+            raise HTTPException(409, f"This report is {onchain.status.value} and can't be disputed.")
+        bond = await chain.dispute_bond()
+        chain_id = await chain.chain_id()
+    except (ChainError, ChainUnavailable) as e:
+        raise _chain_error(e) from None
+    if await db.get(DisputeReasonRow, reason_hash) is None:
+        db.add(DisputeReasonRow(reason_hash=reason_hash, report_id=report_id, text=text, created_at=utcnow()))
+        await db.commit()
+    return DisputePrepared(reason_hash=reason_hash, onchain_id=reg.onchain_id, chain_id=chain_id,
+                           contract_address=chain.address, bond_wei=bond,
+                           calldata=chain.dispute_calldata(reg.onchain_id, reason_hash))
+
+
+@router.post("/reports/{report_id}/reassess", response_model=AssessResponse,
+             dependencies=[Depends(_limit("register_limiter"))])
+async def reassess(report_id: str, st: St, db: Db) -> AssessResponse:
+    """Assess the same link again and register the result as a revision (parentHash = this report's hash).
+    The old version becomes Superseded on-chain; both stay verifiable."""
+    row = await _row_or_404(db, report_id)
+    if row.subject_type not in REASSESSABLE:
+        raise HTTPException(422, "Only links can be re-assessed. Messages are stored redacted, so submit the message again.")
+    reg = await db.get(RegistryRow, report_id)
+    if reg is None or reg.onchain_id is None:
+        raise HTTPException(409, "Register this report on-chain first; a revision links to the registered version.")
+    chain = _get_chain(st)
+    try:
+        status = (await chain.get_report(reg.onchain_id)).status
+    except (ChainError, ChainUnavailable) as e:
+        raise _chain_error(e) from None
+    if status in (RegistryStatus.SUPERSEDED, RegistryStatus.REJECTED):
+        raise HTTPException(409, f"This report is already {status.value}; open its latest version instead.")
+    _throttle(st.register_global, "all")
+    old = store.parse_report(row)
+    new = await _assess_and_store(st, db, old.subject, qr=row.subject_type == SubjectType.QR.value)
+    new_row = await store.get_report_row(db, new.report_id)
+    async with st.register_lock:
+        try:
+            rec = await chain.submit_report(store.parse_report(new_row), parent_hash=reg.report_hash)
+        except (ChainError, ChainUnavailable) as e:
+            raise _chain_error(e) from None
+        await store.save_registry(db, rec)
+        await store.save_registry(db, store.record(reg).model_copy(update={"status": RegistryStatus.SUPERSEDED}))
+    return new
 
 
 async def _verify(st: AppState, db: AsyncSession, report_id: str, canonical: bytes) -> VerificationResult:

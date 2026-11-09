@@ -32,3 +32,7 @@ export type AssessRequest = S["AssessRequest"];
 export type AssessResponse = S["AssessResponse"];
 export type ClusterIndicator = S["ClusterIndicator"];
 export type Cluster = S["Cluster"];
+export type ReportHistory = S["ReportHistory"];
+export type ReportVersion = S["ReportVersion"];
+export type DisputeInfo = S["DisputeInfo"];
+export type DisputePrepared = S["DisputePrepared"];

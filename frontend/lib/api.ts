@@ -7,7 +7,9 @@ import type {
   AssessResponse,
   AssessmentReport,
   Cluster,
+  DisputePrepared,
   RegistryRecord,
+  ReportHistory,
   VerificationResult,
 } from "./types";
 
@@ -115,4 +117,19 @@ export async function verifyUploaded(report: unknown): Promise<VerificationResul
 
 export async function getClusters(): Promise<Cluster[]> {
   return request("/clusters");
+}
+
+/** Versions (oldest first), on-chain statuses, open dispute and the bond needed to dispute. */
+export async function getHistory(id: string): Promise<ReportHistory> {
+  return request(`/reports/${encodeURIComponent(id)}/history`, {}, 60_000);
+}
+
+/** Stores the reason off-chain and returns the transaction the user's own wallet sends (with the bond). */
+export async function prepareDispute(id: string, reason: string): Promise<DisputePrepared> {
+  return request(`/reports/${encodeURIComponent(id)}/dispute-reason`, json("POST", { reason }), 60_000);
+}
+
+/** Assess the same link again and register it as a revision; the old version becomes Superseded. */
+export async function reassessReport(id: string): Promise<AssessResponse> {
+  return request(`/reports/${encodeURIComponent(id)}/reassess`, json("POST"), 290_000);
 }

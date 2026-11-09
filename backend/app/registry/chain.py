@@ -176,6 +176,18 @@ class ChainClient:
         onchain_id = await self.id_of_hash(h)
         return await self.get_report(onchain_id) if onchain_id else None
 
+    async def dispute_bond(self) -> int:
+        return int(await self._call(self._contract.functions.disputeBond().call()))
+
+    async def get_dispute(self, onchain_id: int) -> tuple[str, int] | None:
+        """(disputer, bond_wei) of the open dispute, or None."""
+        disputer, bond = await self._call(self._contract.functions.getDispute(onchain_id).call())
+        return None if int(disputer, 16) == 0 else (disputer, int(bond))
+
+    def dispute_calldata(self, onchain_id: int, reason_hash: str) -> str:
+        """ABI-encoded disputeReport call. The user's wallet sends it (with the bond); the relayer never disputes."""
+        return self._contract.encode_abi("disputeReport", args=[onchain_id, _hex32(reason_hash)])
+
     # ---------- writes ----------
 
     async def submit_report(self, report: AssessmentReport, parent_hash: str | None = None) -> RegistryRecord:

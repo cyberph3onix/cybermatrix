@@ -26,9 +26,21 @@ PHISH = "https://sbi.co.in.kyc-verify-now.top/login?ref=sms"
 
 
 class FakeChain:
+    address = "0x22Cc4217bD5639F5b7159eDA584AC066eb8e73bc"
+
     def __init__(self):
         self.reports: dict[str, SimpleNamespace] = {}
         self.submits = 0
+        self.disputes: dict[int, tuple[str, int]] = {}
+
+    async def dispute_bond(self):
+        return 10**15
+
+    async def get_dispute(self, onchain_id):
+        return self.disputes.get(onchain_id)
+
+    def dispute_calldata(self, onchain_id, reason_hash):
+        return "0x3f12e7c0" + f"{onchain_id:064x}" + reason_hash.removeprefix("0x")
 
     async def chain_id(self):
         return 11155111
@@ -47,8 +59,11 @@ class FakeChain:
         h = report_hash(report)
         r = SimpleNamespace(id=len(self.reports) + 1, report_hash=h, reporter="0xRELAYER",
                             created_at=datetime(2026, 11, 9, tzinfo=UTC), status=RegistryStatus.SUBMITTED)
+        if parent_hash:  # mirrors the contract: the parent becomes Superseded
+            self.reports[parent_hash].status = RegistryStatus.SUPERSEDED
         self.reports[h] = r
-        return RegistryRecord(report_id=report.report_id, report_hash=h, chain_id=11155111, contract_address="0xREG",
+        return RegistryRecord(report_id=report.report_id, report_hash=h, parent_hash=parent_hash or "0x" + "00" * 32,
+                              chain_id=11155111, contract_address="0xREG",
                               onchain_id=r.id, tx_hash="0x" + "ab" * 32, reporter_address=r.reporter)
 
     async def aclose(self):
@@ -291,3 +306,55 @@ def test_upi_payee_seen_in_two_suspicious_messages_becomes_suspicious_via_correl
     assert rep["classification"] == "suspicious" and len(rep["related_report_ids"]) == 2
     assert "scammer@oksbi" not in json.dumps(rep["findings"])
     assert rep["recommended_actions"][0].startswith("Check that the payee")
+
+
+# ---------- history, disputes, revisions ----------
+
+def test_history_of_unregistered_report(client):
+    rid = assess(client)
+    h = client.get(f"/reports/{rid}/history").json()
+    assert h["registered"] is False and h["versions"] == [] and not h["can_dispute"]
+
+
+def test_dispute_reason_is_redacted_and_wallet_ready(client, chain):
+    rid = assess(client)
+    assert client.post(f"/reports/{rid}/dispute-reason", json={"reason": "not registered yet!!"}).status_code == 409
+    client.post(f"/reports/{rid}/register")
+    r = client.post(f"/reports/{rid}/dispute-reason",
+                    json={"reason": "This is my own site; contact me at owner@example.com or 9876543210"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["onchain_id"] == 1 and d["bond_wei"] == 10**15 and d["chain_id"] == 11155111
+    assert d["calldata"].startswith("0x3f12e7c0") and d["calldata"].endswith(d["reason_hash"][2:])
+
+    chain.disputes[1] = ("0xDISPUTER", 10**15)  # the user's wallet sent it
+    next(iter(chain.reports.values())).status = RegistryStatus.DISPUTED
+    h = client.get(f"/reports/{rid}/history").json()
+    assert h["open_dispute"]["disputer"] == "0xDISPUTER" and h["open_dispute"]["reason_hash"] == d["reason_hash"]
+    assert "owner@example.com" not in h["open_dispute"]["reason"] and "9876543210" not in h["open_dispute"]["reason"]
+    assert h["versions"][0]["status"] == "disputed" and not h["can_dispute"] and h["can_reassess"]
+
+
+def test_reassess_registers_a_revision_and_supersedes_the_parent(client, chain):
+    rid = assess(client)
+    assert client.post(f"/reports/{rid}/reassess").status_code == 409  # must be registered first
+    client.post(f"/reports/{rid}/register")
+    r = client.post(f"/reports/{rid}/reassess")
+    assert r.status_code == 200, r.text
+    new = r.json()["report_id"]
+    assert new != rid and chain.submits == 2
+
+    h = client.get(f"/reports/{new}/history").json()
+    assert [v["report_id"] for v in h["versions"]] == [rid, new]
+    assert [v["status"] for v in h["versions"]] == ["superseded", "submitted"]
+    assert [v["is_current"] for v in h["versions"]] == [False, True]
+    old = client.get(f"/reports/{rid}/history").json()  # the old one sees its successor too
+    assert [v["report_id"] for v in old["versions"]] == [rid, new] and not old["can_reassess"] and not old["can_dispute"]
+    assert client.post(f"/reports/{rid}/reassess").status_code == 409
+    assert client.get(f"/reports/{rid}/registration").json()["status"] == "superseded"
+
+
+def test_messages_cannot_be_reassessed(client):
+    rid = assess(client, "URGENT your SBI account is blocked, share OTP now")
+    client.post(f"/reports/{rid}/register")
+    assert client.post(f"/reports/{rid}/reassess").status_code == 422

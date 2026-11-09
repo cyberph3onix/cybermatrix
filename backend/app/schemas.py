@@ -238,6 +238,52 @@ class VerificationResult(Strict):
     note: str = "A matching hash proves this report is unchanged since it was registered. It does not prove the report's conclusions are true."
 
 
+class DisputeInfo(Strict):
+    disputer: str = Field(description="Address that posted the bond")
+    bond_wei: int
+    reason_hash: str | None = Field(default=None, description="keccak256 of the reason text, if this server stored it")
+    reason: str | None = Field(default=None, description="Redacted reason text, kept off-chain")
+
+
+class ReportVersion(Strict):
+    report_id: str | None = Field(description="None if this server does not hold that version")
+    report_hash: str
+    onchain_id: int | None = None
+    status: RegistryStatus
+    tx_hash: str | None = None
+    explorer_url: str | None = None
+    is_current: bool = Field(description="The version whose history was requested")
+
+
+class ReportHistory(Strict):
+    report_id: str
+    registered: bool
+    chain_id: int | None = None
+    contract_address: str | None = None
+    dispute_bond_wei: int | None = Field(default=None, description="Bond required to dispute, read from the contract")
+    versions: list[ReportVersion] = Field(default_factory=list, description="Oldest first, following parentHash links")
+    open_dispute: DisputeInfo | None = None
+    can_reassess: bool = False
+    can_dispute: bool = False
+    note: str = ("Statuses are read from the contract. Disputes are sent from your own wallet with a bond, which is "
+                 "returned if a validator agrees with you and kept if not. The reason text stays off-chain; only its "
+                 "hash is recorded.")
+
+
+class DisputeReasonRequest(Strict):
+    reason: str = Field(min_length=10, max_length=2000, description="Why this report is wrong. Personal details are masked.")
+
+
+class DisputePrepared(Strict):
+    """What a wallet needs to call disputeReport(onchain_id, reason_hash) with value = bond_wei."""
+    reason_hash: str
+    onchain_id: int
+    chain_id: int
+    contract_address: str
+    bond_wei: int
+    calldata: str = Field(description="ABI-encoded disputeReport call, ready for eth_sendTransaction")
+
+
 # ---------- API requests ----------
 
 class AssessRequest(Strict):
