@@ -213,3 +213,23 @@ cases) and `contracts/test/ThreatRegistry.t.sol` (reporter-role cases). Each fai
     The fix is a separate fetch worker container on an egress-only network with no route to Postgres or the backend's
     internal ports, called over a narrow queue/API. Until then, an SSRF bypass in `safe_fetch` would reach internal
     services, which is why its test suite covers the alternate encodings, IPv6 forms and rebinding cases above.
+25. **Passive DNS is partial (M1-6).** `domain.dns` reads A, NS, MX and TXT records over DNS-over-HTTPS and feeds
+    DOMAIN.FAST_FLUX, DOMAIN.FREE_DNS and CORR.SHARED_INFRA (shared NS/IP). AAAA records are not queried, and very low
+    TTL counts only inside FAST_FLUX: a standalone low-TTL heuristic would fire on AWS ELB (60 s) and
+    Cloudflare-proxied (300 s) legitimate sites.
+26. **One VirusTotal engine makes a report suspicious.** VT 1–4 engines is `URL.INTEL.VT_MINORITY` (medium heuristic) and
+    R3 fires on any medium finding. In the 2026-11-10 test run, `https://wbjeeb.nic.in/` (WBJEE board) was
+    `suspicious` because 1 of 93 engines lists it (`docs/evidence/test_runs.json`). The evidence shows "1 of 93", but
+    the class is a false positive. Changing it (e.g. 1 engine = low) is a rule change for RISK_ENGINE.md.
+27. **Wallet flows are tested against a fake chain only.** The EIP-712 signature, the validator panel and campaign
+    registration have API tests with a fake registry; the on-chain dispute and setStatus in
+    `docs/evidence/onchain.md` were sent with `cast`, not through the web UI. Neither UI flow has been clicked
+    through with MetaMask.
+28. **Reports stored before the recipient-address fix may hold it.** Since `cef4ec6`, addresses in To/Cc/Delivered-To
+    headers are not indicators. Databases created earlier can still show such an address on `/clusters`; re-create
+    them (or delete those indicator rows) before a public demo.
+29. **ScamShield held-out figures were not re-run in the final audit.** The full corpus file is not in the repository;
+    only the 50-message sample (a tuning set) was re-run on 2026-11-10.
+30. **Certificate verdict without a certificate.** `GET /reports/{id}/certificate-verdict` returns `valid` with
+    `certificate_checked: false` when no certificate was obtained; the UI only shows the verdict inside the
+    certificate card, so it never appears without a certificate, but API consumers must read `certificate_checked`.

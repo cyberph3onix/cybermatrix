@@ -3,8 +3,11 @@
 Audit run 2026-11-10. Requirement text: `docs/PROBLEM_STATEMENT_CHECKLIST.md`. Every "evidence" entry was produced or
 read in this audit session. Test names are under `backend/tests/` unless stated. "Fix" lists the audit commit.
 
-**Verdict: GO for deliverable prep**, with three open items that need a decision from you (D-2 licence and README,
-D-5 dispute tx). Nothing in Phase 0 failed.
+**Verdict: GO for deliverable prep.** No P0 is open. Nothing in Phase 0 failed. Everything left PARTIAL is listed in
+ARCHITECTURE.md "Known limitations" (24–30).
+
+**Priorities.** P0: MVP (§7), deliverables (D-*), Section 9 (SEC-*), RC-*, IN-*. P1: module requirements M1–M6 except
+M2-7. P2: M2-7 and the extensions listed at the end.
 
 ## Phase 0: does it run
 
@@ -36,7 +39,7 @@ D-5 dispute tx). Nothing in Phase 0 failed.
 | M1-3 | DONE | typosquat/homoglyph/brand-in-subdomain/userinfo/IP/embedded-redirect: `test_url_checks.py`; claimed vs actual identity: PAGE.* in `test_redirects_page.py`; cross-domain redirects + shortener expansion: `test_risk.py::test_redirect_shortener_to_evil_fires`, `…_to_amazon_dampened`; previously reported: `test_correlation.py::test_two_prior_suspicious_reports_raise_prior_reports` | — |
 | M1-4 | DONE | `test_safe_fetch.py::test_redirect_chain_recorded_and_cross_domain`, `test_max_hops`; report page "Redirect chain" renders each hop with status and IP | — |
 | M1-5 | DONE (4 of 4) | Phase 0.5 live run; offline `test_intel.py` | — |
-| M1-6 | PARTIAL | `checks/dns.py` (DoH via dns.google): A, NS, MX, TXT; DOMAIN.FAST_FLUX (≥5 A records, ≥3 /16s, TTL ≤300 s), DOMAIN.FREE_DNS; NS/IP shared with prior reports → CORR.SHARED_INFRA (`test_correlation.py::test_shared_infra_is_low_…`). Tests: `test_dns.py` (7). **Not done:** AAAA is not queried, and a standalone "very low TTL" heuristic was deliberately not added: AWS ELB (60 s) and Cloudflare-proxied (300 s) legitimate sites would trip it. Low TTL counts only inside FAST_FLUX | — |
+| M1-6 (P1) | PARTIAL | `checks/dns.py` (DoH via dns.google): A, NS, MX, TXT; DOMAIN.FAST_FLUX (≥5 A records, ≥3 /16s, TTL ≤300 s), DOMAIN.FREE_DNS; NS/IP shared with prior reports → CORR.SHARED_INFRA (`test_correlation.py::test_shared_infra_is_low_…`). Tests: `test_dns.py` (7). **Not done:** AAAA is not queried, and a standalone "very low TTL" heuristic was deliberately not added: AWS ELB (60 s) and Cloudflare-proxied (300 s) legitimate sites would trip it. Low TTL counts only inside FAST_FLUX | — |
 | M1-7 | DONE | CORR.* tests in `test_correlation.py`; TI matches in every report; `test_audit_correlation.py` | `c50dda0` |
 | M1-8 | DONE | Schema: `recommended_actions`, `findings`, `indicators`, `redirect_chain`, `certificate`, `coverage`. Browser: "What to do now", "Redirect chain", "Certificate", and (added) "Indicators" sections all render | `007410a` |
 | M1-9 | DONE | brands.json: 8 banks, Paytm/PhonePe/GPay/NPCI/PayPal, WBJEE, IEM, Income Tax/GST/UIDAI/EPFO, India Post, Naukri/LinkedIn, Google/Meta/Microsoft. `test_audit_messages.py::test_each_brief_sector_lookalike_is_flagged` (9 sectors incl. account-recovery) | `5b6d772` |
@@ -113,7 +116,7 @@ D-5 dispute tx). Nothing in Phase 0 failed.
 | SEC-1 | DONE | `test_safe_fetch.py::test_blocks_before_any_network` (35 URLs incl. decimal/octal/hex, IPv6, mapped, NAT64, ULA, metadata, now %-encoded hosts), `test_any_private_address_in_answer_blocks`, `test_ipv4_mapped_v6_in_dns_answer_blocked`; rebinding: `test_security_review.py`; 36 cases in `test_attacker_review.py` | `5b6d772` |
 | SEC-2 | DONE | `test_safe_fetch.py::test_public_redirect_to_private_is_blocked`, `test_tls_retry_reruns_precheck_and_blocks_private` | — |
 | SEC-3 | DONE | `test_body_cap`, `test_content_length_cap`, `test_gzip_bomb_capped`, `test_non_html_rejected`; QR: `test_audit_security.py::test_qr_decompression_bomb_and_size_cap_rejected` (400 MP PNG → 422) | `abe648d` |
-| SEC-4 | PARTIAL (documented) | No separate fetch container. ARCHITECTURE limitation 24 states it, the in-code mitigations, and the fix | `88d0b8d` |
+| SEC-4 (P0) | PARTIAL, accepted and documented | No separate fetch container. ARCHITECTURE limitation 24 states it, the in-code mitigations, and the fix | `88d0b8d` |
 | SEC-5 | DONE | `test_audit_security.py::test_forwarded_for_ignored_unless_proxy_trusted`, `test_rotating_spoofed_forwarded_for_does_not_reset_the_limit`; per-check timeouts `pipeline.run_check` (`test_pipeline.py`) | `abe648d` |
 | SEC-6 | DONE | `test_audit_security.py::test_injection_does_not_change_class_and_is_flagged`; E2E message: `injection_attempt_detected: true` | `abe648d` |
 | SEC-7 | DONE | `test_audit_security.py::test_no_pii_in_any_outbound_payload` (every byte to the LLM, GSB, URLhaus, VT; name, OTP, account, Aadhaar, PAN, phone, email). Name limitation stated in message reports and ARCHITECTURE limitation 6 | `abe648d` |
@@ -152,10 +155,22 @@ D-5 dispute tx). Nothing in Phase 0 failed.
 | ID | Status | Evidence / what's missing |
 |---|---|---|
 | D-1 | READY | Clean clone builds and runs with no `.env` (all services healthy) and with the filled `.env` |
-| D-2 | **NOT READY** | History clean (Phase 0.6). **No LICENSE file and no root README.** Setup commands in CLAUDE.md/TESTING.md were run this session and work. Licence choice is yours |
-| D-3 | READY | E2E URL report: Gemini explanation cites only check IDs present. For a *message* demo, Gemini output on the E2E messages fell back to the rule-based summary (one had an injection, by design); pick a message without injection text for the AI demo |
+| D-2 | READY | History clean (Phase 0.6); MIT `LICENSE` added (`14b1ef9`); README setup and verify commands run this session (verify against the public RPC: MATCH, exit 0) |
+| D-3 | READY | E2E URL report: Gemini explanation cites only check IDs present. Use a message without injection text for the AI demo (an injected one correctly falls back to the rule-based summary) |
 | D-4 | READY | `esign-verify.in` (eMudhra fixture) + the GSB test URL, both with TLS analysis |
-| D-5 | **NOT READY** | Address, verified source and submit + setStatus tx hashes exist. **No dispute transaction exists on any registry version** (checked Etherscan tx lists for v3 and v2). Needs one bonded `disputeReport` (0.001 Sepolia ETH) from a wallet, then a `setStatus` to resolve it |
+| D-5 | READY | Address + verified source + submit `0x08d6c9ef…`, setStatus `0xab1eef21…`, and (sent 2026-11-10) dispute `0x2ac133a3…cd8a` → setStatus Validated `0x98b5683f…c7d8` on report #2 (`docs/evidence/onchain.md`) |
 | D-6 | READY | `docs/evidence/verify_match.txt`, `verify_mismatch.txt` |
 | D-7 | READY | ARCHITECTURE: pipeline diagram, TI data-sharing table (GSB `urls.search` sends raw URLs), security methodology, limitations; RISK_ENGINE updated for every new check; TESTING.md numbers re-observed |
-| D-8 | — | The requirement text ended at "D-8" with nothing after it |
+| D-8 | READY | `docs/evidence/test_runs.json`: 4 suspicious (message, TLS expired.badssl.com, lookalike, GSB test page) + 4 benign (SBI, Income Tax, WBJEE board, OTP SMS), with class, score, rule, coverage, confidence, timestamp, report hash. 7/8 correct; **1 false positive** (WBJEE, 1/93 VT engines, explained; limitation 26). ScamShield sample: 25/25 fraud, 0/30 legit flagged (tuning set). Held-out not re-run (corpus not in repo) |
+| D-9 | READY | `scripts/demo.sh` (fresh Postgres volume → fixtures → live cases), run twice in a row on the clean clone: 70 s and 70 s, identical classes. Fallback: the recorded-fixture reports from `demo.seed` need no network and are loaded on every run; `demo/live.py` prints which cases lost an external source |
+| D-10 | READY | eMudhra facts cited to Mozilla, Kudelski, Go vuln DB (CVE-2026-111943 = GO-2026-6809), eMudhra; "Mozilla removed" corrected to "emergency-distrusted (NSS 3.131.1)". PhishTank (register page quoted), PhishLLM (USENIX page), VT limits, GSB v5 methods + non-commercial terms, httpx-secure 0BSD, ScamShield-IN 8,066 rows/openrail, Gemini model IDs: cited. Softened: Gemini "20 requests/day" (not published), `gemini-flash-lite-latest` (not a documented alias), "v2.0 is new" |
+
+## P2 extensions we can honestly claim (each demonstrated by a test or a run this session)
+
+- CT monitoring for unexpected issuers (TLS.CT_UNEXPECTED_ISSUER, `/watch`): `test_tls_ct.py::test_unexpected_issuer`, `test_watch.py`
+- Certificate verdict (valid / suspicious / potentially_compromised): `test_audit_tls.py`, browser
+- Known-vulnerable JS components via OSV: `test_audit_posture.py` (recorded osv.dev response)
+- Campaign registration and verification: `test_a_cluster_can_be_registered_as_a_campaign_and_verified` (fake chain; not yet sent to Sepolia)
+- Reporter provenance by EIP-712 signature: `test_audit_registry.py` (not yet clicked through with MetaMask)
+- Bonded disputes resolved by a validator, on Sepolia: `docs/evidence/onchain.md`
+- STIX 2.1 / plain-text threat feed, browser-extension quick check, screenshot impersonation, org dashboard: existing tests (`test_extensions.py`), not re-demonstrated live in this audit beyond the feed endpoints in `test_report_ids_are_uuid4_and_shared_views_hold_no_message_text`
